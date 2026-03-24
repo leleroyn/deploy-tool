@@ -169,6 +169,7 @@ run_action() {
     local script="$1"
     local arg="$2"
     local fail_msg="$3"
+    local project="${4:-}"
 
     echo
     "$script" "$arg"
@@ -176,7 +177,11 @@ run_action() {
     echo
 
     if [ $exit_code -ne 0 ]; then
-        print_error "$fail_msg (退出码: $exit_code)"
+        if [ -n "$project" ]; then
+            print_error "$fail_msg: 项目 '$project' (退出码: $exit_code)"
+        else
+            print_error "$fail_msg (退出码: $exit_code)"
+        fi
     fi
 }
 
@@ -221,7 +226,7 @@ while true; do
                     print_confirm "即将备份 ${BOLD}所有项目${RESET}"
                     read confirm
                     if [[ $confirm =~ ^[Yy]$ ]]; then
-                        run_action "$BACKUP_SCRIPT" "all" "备份失败"
+                        run_action "$BACKUP_SCRIPT" "all" "备份失败" "all"
                     else
                         print_warning "操作已取消"
                     fi
@@ -230,7 +235,7 @@ while true; do
                     print_confirm "即将备份项目: ${BOLD}${project}${RESET}"
                     read confirm
                     if [[ $confirm =~ ^[Yy]$ ]]; then
-                        run_action "$BACKUP_SCRIPT" "$project" "备份失败"
+                        run_action "$BACKUP_SCRIPT" "$project" "备份失败" "$project"
                     else
                         print_warning "操作已取消"
                     fi
@@ -259,7 +264,7 @@ while true; do
                 print_confirm "即将部署项目: ${BOLD}${project}${RESET}"
                 read confirm
                 if [[ $confirm =~ ^[Yy]$ ]]; then
-                    run_action "$DEPLOY_SCRIPT" "$project" "部署失败"
+                    run_action "$DEPLOY_SCRIPT" "$project" "部署失败" "$project"
                 else
                     print_warning "操作已取消"
                 fi
@@ -289,7 +294,7 @@ while true; do
                     print_confirm "即将检测 ${BOLD}所有项目${RESET} 的端口"
                     read confirm
                     if [[ $confirm =~ ^[Yy]$ ]]; then
-                        run_action "$CHECK_PORTS_SCRIPT" "all" "端口检测失败"
+                        run_action "$CHECK_PORTS_SCRIPT" "all" "端口检测失败" "all"
                     else
                         print_warning "操作已取消"
                     fi
@@ -298,7 +303,7 @@ while true; do
                     print_confirm "即将检测项目端口: ${BOLD}${project}${RESET}"
                     read confirm
                     if [[ $confirm =~ ^[Yy]$ ]]; then
-                        run_action "$CHECK_PORTS_SCRIPT" "$project" "端口检测失败"
+                        run_action "$CHECK_PORTS_SCRIPT" "$project" "端口检测失败" "$project"
                     else
                         print_warning "操作已取消"
                     fi
