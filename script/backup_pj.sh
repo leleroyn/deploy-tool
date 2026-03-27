@@ -136,7 +136,7 @@ if [ "$PROJECT_NAME" = "all" ]; then
     for p in "${ALL_PROJECTS[@]}"; do
         echo ""
         echo "  ${BOLD}${MAGENTA}┌─ 备份项目: ${GREEN}$p${RESET}"
-        echo "  ${DIM}$(printf '%54s' | tr ' ' '─')${RESET}"
+        echo "  ${DIM}$(printf '%54s' | tr ' ' '-')${RESET}"
         "$0" "$p"
         if [ $? -ne 0 ]; then
             echo "  ${YELLOW}${BOLD}[!]${RESET} ${YELLOW}项目 $p 备份失败，继续处理后续项目...${RESET}"

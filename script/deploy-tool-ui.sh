@@ -37,7 +37,7 @@ VERSION="1.0.0"
 
 # 打印分隔线
 print_line() {
-    local char="${1:-─}"
+    local char="${1:--}"
     local width=58
     echo "${DIM}${char}$(printf "%${width}s" | tr ' ' "$char")${RESET}"
 }
@@ -50,9 +50,9 @@ print_header() {
     local padding=$(( (width - text_len) / 2 ))
     local right_padding=$(( width - text_len - padding ))
 
-    echo "${MAGENTA}${BOLD}╭$(printf "%${width}s" | tr ' ' '─')╮${RESET}"
-    echo "${MAGENTA}${BOLD}│${RESET}$(printf "%${padding}s")${WHITE}${BOLD}${text}${RESET}$(printf "%${right_padding}s")${MAGENTA}${BOLD}│${RESET}"
-    echo "${MAGENTA}${BOLD}╰$(printf "%${width}s" | tr ' ' '─')╯${RESET}"
+    echo "${MAGENTA}${BOLD}+$(printf "%${width}s" | tr ' ' '-')+${RESET}"
+    echo "${MAGENTA}${BOLD}|${RESET}$(printf "%${padding}s")${WHITE}${BOLD}${text}${RESET}$(printf "%${right_padding}s")${MAGENTA}${BOLD}|${RESET}"
+    echo "${MAGENTA}${BOLD}+$(printf "%${width}s" | tr ' ' '-')+${RESET}"
 }
 
 # 打印子标题

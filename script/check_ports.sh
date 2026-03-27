@@ -167,7 +167,7 @@ if [ "$PROJECT_NAME" = "all" ]; then
     for p in "${ALL_PROJECTS[@]}"; do
         echo ""
         echo "  ${BOLD}${MAGENTA}┌─ 检测项目: ${GREEN}$p${RESET}"
-        echo "  ${DIM}$(printf '%54s' | tr ' ' '─')${RESET}"
+        echo "  ${DIM}$(printf '%54s' | tr ' ' '-')${RESET}"
         "$0" "$p"
         if [ $? -ne 0 ]; then
             echo "  ${YELLOW}${BOLD}[!]${RESET} ${YELLOW}项目 $p 检测失败，继续处理后续项目...${RESET}"
@@ -201,21 +201,21 @@ for SERVER in "${SERVER_LIST[@]}"; do
     [ -z "$SERVER" ] && continue
 
     echo ""
-    echo "${BOLD}${BLUE}┌─ 服务器: ${WHITE}$SERVER${RESET}"
-    echo "${BLUE}│${RESET}"
+    echo "  ${BOLD}${BLUE}┌─ 服务器: ${WHITE}$SERVER${RESET}"
+    echo "  ${BLUE}│${RESET}"
 
-    echo -n "${BLUE}│${RESET} ${BOLD}端口状态:${RESET} "
+    echo -n "  ${BLUE}│${RESET} ${BOLD}端口状态:${RESET} "
     if check_ports "$SERVER" "$BIND_PORTS"; then
         echo ""
-        echo "${BLUE}│${RESET} ${GREEN}${BOLD}[✔]${RESET} ${GREEN}所有端口均正常${RESET}"
+        echo "  ${BLUE}│${RESET} ${GREEN}${BOLD}[✔]${RESET} ${GREEN}所有端口均正常${RESET}"
         log "INFO" "项目 $PROJECT_NAME 服务器 $SERVER 端口 $BIND_PORTS 检测成功"
     else
         echo ""
-        echo "${BLUE}│${RESET} ${RED}${BOLD}[✘]${RESET} ${RED}部分端口未监听${RESET}"
+        echo "  ${BLUE}│${RESET} ${RED}${BOLD}[✘]${RESET} ${RED}部分端口未监听${RESET}"
         log "ERROR" "项目 $PROJECT_NAME 服务器 $SERVER 端口 $BIND_PORTS 检测失败"
         global_failed=true
     fi
-    echo "${BLUE}└─ 完成${RESET}"
+    echo "  ${BLUE}└─ 完成${RESET}"
 done
 
 if [ "$global_failed" = true ]; then

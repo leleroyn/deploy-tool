@@ -159,7 +159,7 @@ done
 # 显示项目信息（美化）
 echo ""
 echo "  ${BOLD}${MAGENTA}┌─ 部署项目: ${GREEN}$PROJECT_NAME${RESET}"
-echo "  ${DIM}$(printf '%54s' | tr ' ' '─')${RESET}"
+echo "  ${DIM}$(printf '%54s' | tr ' ' '-')${RESET}"
 echo "  ${BOLD}本地源目录:${RESET} $LOCAL_DIR"
 echo "  ${BOLD}远程目标目录:${RESET} $REMOTE_DIR"
 echo "  ${BOLD}排除模式:${RESET} $EXCLUDE_PATTERNS"
