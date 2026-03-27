@@ -217,6 +217,7 @@ const BackupPage: React.FC = () => {
                   <div>
                     <span className="text-text-secondary mr-2">重启命令</span>
                     <span className="font-mono text-text-primary">{proj.restartCmd}</span>
+                    <span className="ml-2 text-[11px] text-text-muted italic">（备份不会执行）</span>
                   </div>
                 </div>
               )}

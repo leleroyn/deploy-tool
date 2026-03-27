@@ -419,6 +419,9 @@ const DeployPage: React.FC = () => {
                 <div>
                   <span className="text-text-secondary mr-2">重启命令</span>
                   <span className="font-mono text-text-primary">{proj.restartCmd || '—'}</span>
+                  {proj.restartCmd && (
+                    <span className="ml-2 text-[11px] text-status-success italic">（部署成功后自动执行）</span>
+                  )}
                 </div>
               </div>
               {proj.bindPorts.length > 0 && (
