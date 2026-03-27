@@ -4,7 +4,7 @@ import { Terminal } from '@xterm/xterm';
 import {
   Archive, Play, Loader, Package,
   Server, HardDrive, FolderOpen, RotateCcw, Tag,
-  CheckCircle, XCircle, RefreshCw,
+  CheckCircle, XCircle, RefreshCw, MinusCircle,
 } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { api } from '../api/http';
@@ -12,6 +12,13 @@ import { createTaskWs } from '../api/ws';
 import TerminalOutput from '../components/TerminalOutput';
 import TaskStatusBadge from '../components/TaskStatusBadge';
 import { TaskStatus, PreflightData } from '../types';
+
+interface AllBackupStatus {
+  name: string;
+  backed: boolean | null;  // null = 查询中
+  detail: string;
+  servers: PreflightData['backup']['servers'];
+}
 
 const BackupPage: React.FC = () => {
   const location = useLocation();
@@ -25,21 +32,35 @@ const BackupPage: React.FC = () => {
   const terminalRef = useRef<Terminal | null>(null);
   const wsCloseRef = useRef<(() => void) | null>(null);
 
-  // 项目备份状态
+  // 单项目备份状态
   const [preflight, setPreflight] = useState<PreflightData | null>(null);
   const [preflightLoading, setPreflightLoading] = useState(false);
+
+  // 全部项目备份状态
+  const [allBackup, setAllBackup] = useState<AllBackupStatus[]>([]);
+  const [allBackupLoading, setAllBackupLoading] = useState(false);
 
   useEffect(() => {
     loadProjects();
   }, []);
 
-  // 切换到具体项目时加载备份状态
+  // projects 加载完成后，若当前是 all，立即加载全部备份状态
   useEffect(() => {
-    if (!selectedProject || selectedProject === 'all') {
-      setPreflight(null);
-      return;
+    if (projects.length === 0) return;
+    if (selectedProject === 'all') {
+      loadAllBackup();
     }
-    loadPreflight();
+  }, [projects]);
+
+  // 切换项目时重置并重新加载
+  useEffect(() => {
+    if (selectedProject === 'all') {
+      setPreflight(null);
+      if (projects.length > 0) loadAllBackup();
+    } else {
+      setAllBackup([]);
+      loadPreflight();
+    }
   }, [selectedProject]);
 
   const loadPreflight = async () => {
@@ -50,6 +71,33 @@ const BackupPage: React.FC = () => {
     if (res.success && res.data) {
       setPreflight(res.data);
     }
+  };
+
+  const loadAllBackup = async () => {
+    if (projects.length === 0) return;
+    setAllBackupLoading(true);
+    // 并发查询所有项目
+    const results = await Promise.all(
+      projects.map(async (p) => {
+        const res = await api.deployPreflight(p.name);
+        if (res.success && res.data) {
+          return {
+            name: p.name,
+            backed: res.data.backup.backed,
+            detail: res.data.backup.detail,
+            servers: res.data.backup.servers ?? [],
+          } as AllBackupStatus;
+        }
+        return {
+          name: p.name,
+          backed: null,
+          detail: '查询失败',
+          servers: [],
+        } as AllBackupStatus;
+      })
+    );
+    setAllBackup(results);
+    setAllBackupLoading(false);
   };
 
   const handleBackup = async () => {
@@ -88,7 +136,11 @@ const BackupPage: React.FC = () => {
         setIsRunning(false);
         setBackupResult([...results]);
         // 备份完成后刷新今日备份状态
-        loadPreflight();
+        if (selectedProject === 'all') {
+          loadAllBackup();
+        } else {
+          loadPreflight();
+        }
       }
     });
   };
@@ -181,6 +233,102 @@ const BackupPage: React.FC = () => {
           );
         })()}
       </div>
+
+      {/* 全部项目今日备份状态面板 */}
+      {selectedProject === 'all' && (
+        <div className="bg-bg-secondary border border-border rounded-xl p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[14px] font-semibold text-text-primary flex items-center gap-2">
+              <Archive size={16} className="text-primary-cyan" />
+              今日备份状态 — 全部项目
+            </h2>
+            <button
+              onClick={loadAllBackup}
+              disabled={allBackupLoading}
+              className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={12} className={allBackupLoading ? 'animate-spin' : ''} />
+              刷新
+            </button>
+          </div>
+
+          {allBackupLoading && allBackup.length === 0 && (
+            <div className="flex items-center gap-2 text-sm text-text-secondary py-1">
+              <Loader size={14} className="animate-spin" />
+              查询中...
+            </div>
+          )}
+
+          {allBackup.length > 0 && (
+            <div className="space-y-2">
+              {allBackup.map((item) => (
+                <div
+                  key={item.name}
+                  className={`rounded-lg border px-4 py-3 ${
+                    item.backed === null
+                      ? 'border-border bg-bg-tertiary'
+                      : item.backed
+                      ? 'border-status-success/30 bg-status-success/5'
+                      : 'border-status-error/30 bg-status-error/5'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {item.backed === null
+                      ? <MinusCircle size={14} className="text-text-secondary flex-shrink-0" />
+                      : item.backed
+                      ? <CheckCircle size={14} className="text-status-success flex-shrink-0" />
+                      : <XCircle size={14} className="text-status-error flex-shrink-0" />}
+                    <span className={`text-sm font-medium ${
+                      item.backed === null
+                        ? 'text-text-secondary'
+                        : item.backed
+                        ? 'text-status-success'
+                        : 'text-status-error'
+                    }`}>
+                      {item.name}
+                    </span>
+                    <span className="text-xs text-text-secondary ml-auto">{item.detail}</span>
+                  </div>
+
+                  {/* 服务器明细（折叠展示，仅有多台时显示） */}
+                  {item.servers && item.servers.length > 1 && (
+                    <div className="mt-2 pl-6 space-y-1">
+                      {item.servers.map(srv => (
+                        <div key={srv.server} className="flex items-center gap-2 text-xs text-text-secondary">
+                          {srv.success
+                            ? <CheckCircle size={11} className="text-status-success flex-shrink-0" />
+                            : <XCircle size={11} className="text-status-error flex-shrink-0" />}
+                          <span className="font-mono">{srv.server}</span>
+                          {srv.success && srv.time && (
+                            <span className="ml-1">{srv.time.slice(11, 16)}</span>
+                          )}
+                          {srv.success && srv.backupFile && (
+                            <span className="font-mono text-text-muted truncate max-w-xs" title={srv.backupFile}>
+                              {srv.backupFile.split('/').pop()}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 单台服务器时直接展示时间 */}
+                  {item.servers && item.servers.length === 1 && item.servers[0].success && (
+                    <div className="mt-1 pl-6 text-xs text-text-secondary">
+                      {item.servers[0].time && <span>{item.servers[0].time}</span>}
+                      {item.servers[0].backupFile && (
+                        <span className="font-mono ml-2 text-text-muted" title={item.servers[0].backupFile}>
+                          {item.servers[0].backupFile.split('/').pop()}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 今日备份状态面板（仅选择具体项目时显示） */}
       {selectedProject && selectedProject !== 'all' && (
