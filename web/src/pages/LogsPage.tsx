@@ -145,7 +145,7 @@ const LogsPage: React.FC = () => {
                   <button
                     onClick={() => setConfirmKey(file.key)}
                     className="p-1 rounded text-text-secondary hover:text-status-error hover:bg-status-error/10 transition-all"
-                    title="清空"
+                    title="清空日志内容"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -163,7 +163,7 @@ const LogsPage: React.FC = () => {
               {confirmKey === file.key && (
                 <div className="mt-3 pt-3 border-t border-status-error/30 flex items-center gap-2">
                   <AlertTriangle size={13} className="text-status-error flex-shrink-0" />
-                  <span className="text-xs text-status-error flex-1">确认清空此日志？</span>
+                  <span className="text-xs text-status-error flex-1">确认清空日志内容？</span>
                   <button
                     onClick={() => handleClearLog(file.key)}
                     className="px-2.5 py-1 text-xs rounded bg-status-error text-white hover:bg-status-error/80 transition-colors"
