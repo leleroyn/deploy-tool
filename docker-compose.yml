@@ -16,6 +16,8 @@ services:
       - CONFIG_FILE=/app/config.ini
       # 跳过脚本内部 ssh-agent 初始化
       - SKIP_SSH_INIT=1
+      # 脚本日志写到可写的 /app/logs 目录
+      - LOG_BASE_DIR=/app/logs
     volumes:
       # 挂载配置文件（必须）
       - ./config.ini:/app/config.ini:ro

@@ -53,12 +53,13 @@ EXPOSE 3001
 
 ENV NODE_ENV=production \
     SCRIPT_DIR=/app/script \
-    CONFIG_FILE=/app/config.ini
+    CONFIG_FILE=/app/config.ini \
+    LOG_BASE_DIR=/app/logs
 
 # 以非 root 用户运行
 RUN addgroup -S deploy && adduser -S deploy -G deploy \
-    && mkdir -p /home/deploy/.ssh \
-    && chown -R deploy:deploy /home/deploy/.ssh
+    && mkdir -p /home/deploy/.ssh /app/logs \
+    && chown -R deploy:deploy /home/deploy/.ssh /app/logs
 USER deploy
 
 CMD ["node", "dist/index.js"]

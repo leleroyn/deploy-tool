@@ -25,7 +25,10 @@ fi
 # ========== 全局配置 ==========
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/config.ini"
-LOG_FILE="${SCRIPT_DIR}/check_ports.log"
+# 日志写到可写目录（Docker 下 /app/logs 为可写 volume，本地退回脚本目录）
+LOG_DIR="${LOG_BASE_DIR:-${SCRIPT_DIR}}"
+mkdir -p "$LOG_DIR" 2>/dev/null || true
+LOG_FILE="${LOG_DIR}/check_ports.log"
 
 # 检查配置文件是否存在
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -40,7 +43,7 @@ get_ini_value() {
     local ini_file="$3"
     sed 's/\r$//' "$ini_file" | awk -F= -v section="$section" -v key="$key" '
     $0 ~ "^\\[" section "\\]" { in_section=1; next }
-    /^\\[/ && !/^\\[" section "\\]/ { in_section=0 }
+    /^\[/ && $0 !~ "^\\[" section "\\]" { in_section=0 }
     in_section && $1 ~ "^[[:space:]]*" key "[[:space:]]*$" {
         gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2)
         print $2
