@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Download, Trash2, RefreshCw, ChevronDown } from 'lucide-react';
+import { FileText, Download, Trash2, RefreshCw, AlertTriangle, X } from 'lucide-react';
 import { api } from '../api/http';
 import { useAppStore } from '../store/appStore';
 import TaskStatusBadge from '../components/TaskStatusBadge';
@@ -23,6 +23,8 @@ const LogsPage: React.FC = () => {
   const [activeLog, setActiveLog] = useState<string | null>(null);
   const [logContent, setLogContent] = useState('');
   const [loading, setLoading] = useState(false);
+  // 内联确认：存待删除的 key，避免 iframe 中 window.confirm 被拦截
+  const [confirmKey, setConfirmKey] = useState<string | null>(null);
 
   useEffect(() => {
     loadTasks();
@@ -43,9 +45,9 @@ const LogsPage: React.FC = () => {
   };
 
   const handleClearLog = async (key: string) => {
-    if (!confirm('确认清空此日志文件？')) return;
     await api.clearLog(key);
-    setLogContent('');
+    if (activeLog === key) setLogContent('');
+    setConfirmKey(null);
     loadLogFiles();
   };
 
@@ -141,7 +143,7 @@ const LogsPage: React.FC = () => {
                     <Download size={13} />
                   </button>
                   <button
-                    onClick={() => handleClearLog(file.key)}
+                    onClick={() => setConfirmKey(file.key)}
                     className="p-1 rounded text-text-secondary hover:text-status-error hover:bg-status-error/10 transition-all"
                     title="清空"
                   >
@@ -156,6 +158,26 @@ const LogsPage: React.FC = () => {
                   <span>{new Date(file.lastModified).toLocaleDateString('zh-CN')}</span>
                 )}
               </div>
+
+              {/* 内联确认 */}
+              {confirmKey === file.key && (
+                <div className="mt-3 pt-3 border-t border-status-error/30 flex items-center gap-2">
+                  <AlertTriangle size={13} className="text-status-error flex-shrink-0" />
+                  <span className="text-xs text-status-error flex-1">确认清空此日志？</span>
+                  <button
+                    onClick={() => handleClearLog(file.key)}
+                    className="px-2.5 py-1 text-xs rounded bg-status-error text-white hover:bg-status-error/80 transition-colors"
+                  >
+                    确认
+                  </button>
+                  <button
+                    onClick={() => setConfirmKey(null)}
+                    className="p-1 rounded text-text-secondary hover:text-text-primary transition-colors"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
