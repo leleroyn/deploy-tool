@@ -203,67 +203,67 @@ for SERVER in "${SERVER_LIST[@]}"; do
     SSH_CMD="ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER} \"$REMOTE_EXTRACT_CMD\""
 
     if [ $DRY_RUN -eq 1 ]; then
-        echo "${BLUE}│${RESET} ${YELLOW}[干跑模式] 本地打包:${RESET} ${TAR_CMD[*]}"
-        echo "${BLUE}│${RESET} ${YELLOW}[干跑模式] 上传:${RESET} $SCP_CMD"
-        echo "${BLUE}│${RESET} ${YELLOW}[干跑模式] 远程解压:${RESET} $SSH_CMD"
-        echo "${BLUE}│${RESET} ${YELLOW}[干跑模式] 本地清理: rm -f '$LOCAL_TARBALL'${RESET}"
+        echo "  ${BLUE}│${RESET} ${YELLOW}[干跑模式] 本地打包:${RESET} ${TAR_CMD[*]}"
+        echo "  ${BLUE}│${RESET} ${YELLOW}[干跑模式] 上传:${RESET} $SCP_CMD"
+        echo "  ${BLUE}│${RESET} ${YELLOW}[干跑模式] 远程解压:${RESET} $SSH_CMD"
+        echo "  ${BLUE}│${RESET} ${YELLOW}[干跑模式] 本地清理: rm -f '$LOCAL_TARBALL'${RESET}"
         if [ -n "$RESTART_CMD" ]; then
-            echo "${BLUE}│${RESET} ${YELLOW}[干跑模式] 远程重启: ssh ${SSH_USER}@${SERVER} \"$RESTART_CMD\"${RESET}"
+            echo "  ${BLUE}│${RESET} ${YELLOW}[干跑模式] 远程重启: ssh ${SSH_USER}@${SERVER} \"$RESTART_CMD\"${RESET}"
         fi
         log "INFO" "项目 $PROJECT_NAME 干跑部署，服务器 $SERVER"
-        echo "${BLUE}└─ 完成${RESET}"
+        echo "  ${BLUE}└─ 完成${RESET}"
         continue
     fi
 
     # 实际执行
-    echo "${BLUE}│${RESET} ${CYAN}创建本地 tarball...${RESET}"
+    echo "  ${BLUE}│${RESET} ${CYAN}创建本地 tarball...${RESET}"
     if ! "${TAR_CMD[@]}"; then
-        echo "${BLUE}│${RESET} ${RED}${BOLD}[✘]${RESET} ${RED}错误: 本地打包失败${RESET}"
+        echo "  ${BLUE}│${RESET} ${RED}${BOLD}[✘]${RESET} ${RED}错误: 本地打包失败${RESET}"
         log "ERROR" "项目 $PROJECT_NAME 部署失败，服务器 $SERVER，本地打包失败"
         global_failed=true
-        echo "${BLUE}└─ 完成${RESET}"
+        echo "  ${BLUE}└─ 完成${RESET}"
         continue
     fi
 
-    echo "${BLUE}│${RESET} ${CYAN}上传 tarball 到 $SERVER ...${RESET}"
+    echo "  ${BLUE}│${RESET} ${CYAN}上传 tarball 到 $SERVER ...${RESET}"
     if ! eval "$SCP_CMD"; then
-        echo "${BLUE}│${RESET} ${RED}${BOLD}[✘]${RESET} ${RED}错误: scp 上传失败${RESET}"
+        echo "  ${BLUE}│${RESET} ${RED}${BOLD}[✘]${RESET} ${RED}错误: scp 上传失败${RESET}"
         rm -f "$LOCAL_TARBALL"
         log "ERROR" "项目 $PROJECT_NAME 部署失败，服务器 $SERVER，scp 上传失败"
         global_failed=true
-        echo "${BLUE}└─ 完成${RESET}"
+        echo "  ${BLUE}└─ 完成${RESET}"
         continue
     fi
 
-    echo "${BLUE}│${RESET} ${CYAN}远程解压到 $REMOTE_DIR ...${RESET}"
+    echo "  ${BLUE}│${RESET} ${CYAN}远程解压到 $REMOTE_DIR ...${RESET}"
     if ! eval "$SSH_CMD"; then
-        echo "${BLUE}│${RESET} ${RED}${BOLD}[✘]${RESET} ${RED}错误: 远程解压失败${RESET}"
+        echo "  ${BLUE}│${RESET} ${RED}${BOLD}[✘]${RESET} ${RED}错误: 远程解压失败${RESET}"
         rm -f "$LOCAL_TARBALL"
         log "ERROR" "项目 $PROJECT_NAME 部署失败，服务器 $SERVER，远程解压失败"
         global_failed=true
-        echo "${BLUE}└─ 完成${RESET}"
+        echo "  ${BLUE}└─ 完成${RESET}"
         continue
     fi
 
     rm -f "$LOCAL_TARBALL"
 
     if [ -n "$RESTART_CMD" ]; then
-        echo "${BLUE}│${RESET} ${CYAN}执行重启命令: $RESTART_CMD${RESET}"
-        if ssh -o StrictHostKeyChecking=no $SSH_KEY_ARG "${SSH_USER}@${SERVER}" "$RESTART_CMD"; then
-            echo "${BLUE}│${RESET} ${GREEN}${BOLD}[✔]${RESET} ${GREEN}重启命令执行成功${RESET}"
+        echo "  ${BLUE}│${RESET} ${CYAN}执行重启命令: $RESTART_CMD${RESET}"
+        if ssh -o StrictHostKeyChecking=no $SSH_KEY_ARG "${SSH_USER}@${SERVER}" "$RESTART_CMD" > /dev/null; then
+            echo "  ${BLUE}│${RESET} ${GREEN}${BOLD}[✔]${RESET} ${GREEN}重启命令执行成功${RESET}"
             log "INFO" "项目 $PROJECT_NAME 部署成功，服务器 $SERVER，重启命令执行成功: $RESTART_CMD"
         else
-            echo "${BLUE}│${RESET} ${RED}${BOLD}[✘]${RESET} ${RED}重启命令执行失败${RESET}"
+            echo "  ${BLUE}│${RESET} ${RED}${BOLD}[✘]${RESET} ${RED}重启命令执行失败${RESET}"
             log "ERROR" "项目 $PROJECT_NAME 部署成功但重启命令执行失败，服务器 $SERVER，命令: $RESTART_CMD"
             global_failed=true
-            echo "${BLUE}└─ 完成${RESET}"
+            echo "  ${BLUE}└─ 完成${RESET}"
             continue
         fi
     fi
 
-    echo "${BLUE}│${RESET} ${GREEN}${BOLD}[✔]${RESET} ${GREEN}部署成功: $SERVER${RESET}"
+    echo "  ${BLUE}│${RESET} ${GREEN}${BOLD}[✔]${RESET} ${GREEN}部署成功: $SERVER${RESET}"
     log "INFO" "项目 $PROJECT_NAME 部署成功，服务器 $SERVER，本地目录 $LOCAL_DIR -> 远程目录 $REMOTE_DIR"
-    echo "${BLUE}└─ 完成${RESET}"
+    echo "  ${BLUE}└─ 完成${RESET}"
 done
 
 echo ""

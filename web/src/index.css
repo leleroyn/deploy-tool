@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #F5F7FA;
+  color: #1D2129;
+  font-family: 'Noto Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F0F2F5;
+}
+::-webkit-scrollbar-thumb {
+  background: #C9CDD4;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #1677FF;
+}
+
+/* Terminal container - 终端保持黑色 */
+.xterm-container {
+  background: #1A1A2E;
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 300px;
+  overflow: hidden;
+}
+
+/* Card hover effect */
+.card-hover:hover {
+  box-shadow: 0 4px 20px rgba(22, 119, 255, 0.12);
+  border-color: #4096FF;
+  transition: all 0.2s ease;
+}
+
+/* Status dot animations */
+.status-online {
+  animation: pulse-green 2s infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 180, 42, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(0, 180, 42, 0); }
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #1677FF, #0958D9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+
+# 依赖（构建阶段会重新安装）
+node_modules
+web/node_modules
+server/node_modules
+
+# 编译产物（构建阶段会重新生成）
+server/dist
+web/dist
+
+# 日志
+*.log
+script/*.log
+
+# 环境变量文件（敏感信息，不入镜像）
+.env
+.env.*
+
+# 开发工具
+.vscode
+.idea
+*.workbuddy
+
+# 文档
+*.md
+启动说明.md

@@ -1,1 +1,19 @@
 *.log
+
+# Node.js
+node_modules/
+dist/
+.env
+.env.local
+
+# Build output
+server/dist/
+web/dist/
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
