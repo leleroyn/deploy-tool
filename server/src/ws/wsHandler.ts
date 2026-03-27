@@ -1,6 +1,6 @@
 import * as http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
-import { onLog, onStatus, getTask } from '../tasks/taskQueue';
+import { onLog, onStatus, getTask, getLogBuffer } from '../tasks/taskQueue';
 import { WsMessage } from '../types';
 import { verifyToken } from '../auth';
 
@@ -33,7 +33,14 @@ export function setupWebSocket(server: http.Server): void {
       clientInfo.taskId = taskId;
       const task = getTask(taskId);
       if (task) {
+        // 先回放已缓冲的历史日志，再发送当前状态
+        const buffered = getLogBuffer(taskId);
+        buffered.forEach(chunk => send(ws, { type: 'log', taskId, data: chunk }));
         send(ws, { type: 'status', taskId, data: task.status });
+        // 如果任务已结束，补发 complete 事件
+        if (task.status === 'success' || task.status === 'failed') {
+          send(ws, { type: 'complete', taskId, data: task.status });
+        }
       }
     }
 
@@ -44,7 +51,12 @@ export function setupWebSocket(server: http.Server): void {
           clientInfo.taskId = msg.taskId;
           const task = getTask(msg.taskId);
           if (task) {
+            const buffered = getLogBuffer(msg.taskId);
+            buffered.forEach(chunk => send(ws, { type: 'log', taskId: msg.taskId, data: chunk }));
             send(ws, { type: 'status', taskId: msg.taskId, data: task.status });
+            if (task.status === 'success' || task.status === 'failed') {
+              send(ws, { type: 'complete', taskId: msg.taskId, data: task.status });
+            }
           }
         }
       } catch {

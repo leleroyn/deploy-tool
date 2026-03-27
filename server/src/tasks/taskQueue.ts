@@ -6,6 +6,7 @@ export type LogListener = (taskId: string, chunk: string) => void;
 export type StatusListener = (task: Task) => void;
 
 const tasks: Map<string, Task> = new Map();
+const logBuffers: Map<string, string[]> = new Map(); // taskId -> 已发日志缓冲
 const logListeners: Set<LogListener> = new Set();
 const statusListeners: Set<StatusListener> = new Set();
 
@@ -25,6 +26,9 @@ export function onStatus(listener: StatusListener): () => void {
 }
 
 function emitLog(taskId: string, chunk: string) {
+  // 缓冲日志，供后续连接的 WebSocket 回放
+  if (!logBuffers.has(taskId)) logBuffers.set(taskId, []);
+  logBuffers.get(taskId)!.push(chunk);
   logListeners.forEach(l => l(taskId, chunk));
 }
 
@@ -104,6 +108,10 @@ export function createTask(type: TaskType, project: string, dryRun = false): Tas
 
 export function getTask(id: string): Task | undefined {
   return tasks.get(id);
+}
+
+export function getLogBuffer(taskId: string): string[] {
+  return logBuffers.get(taskId) ?? [];
 }
 
 export function getAllTasks(): Task[] {

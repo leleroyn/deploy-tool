@@ -138,10 +138,13 @@ check_ports() {
         # 通过 SSH 检查端口是否监听
         # 使用 ss 或 netstat，如果不存在则用 nc -z
         CHECK_CMD="ss -tln | grep -q ':$port ' || netstat -tln 2>/dev/null | grep -q ':$port ' || (command -v nc >/dev/null && nc -z 127.0.0.1 $port >/dev/null 2>&1)"
-        if ssh -o ConnectTimeout=5 $SSH_KEY_ARG "${SSH_USER}@${server}" "$CHECK_CMD" 2>/dev/null; then
+        ssh_err=$(ssh -o ConnectTimeout=5 $SSH_KEY_ARG "${SSH_USER}@${server}" "$CHECK_CMD" 2>&1 >/dev/null)
+        ssh_exit=$?
+        if [ $ssh_exit -eq 0 ]; then
             echo -n "${GREEN}${BOLD}[✔]${RESET}"
         else
             echo -n "${RED}${BOLD}[✘]${RESET}"
+            [ -n "$ssh_err" ] && echo -n " ${DIM}(${ssh_err})${RESET}"
             all_ok=false
         fi
         echo -n " $port "
