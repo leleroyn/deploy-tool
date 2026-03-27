@@ -108,3 +108,11 @@ export function getConfigPath(): string {
 export function getScriptDir(): string {
   return SCRIPT_DIR;
 }
+
+/**
+ * 日志目录：优先用 LOG_BASE_DIR 环境变量（Docker volume），
+ * 没有则退回 SCRIPT_DIR，与 Shell 脚本行为完全一致。
+ */
+export function getLogDir(): string {
+  return process.env.LOG_BASE_DIR || SCRIPT_DIR;
+}

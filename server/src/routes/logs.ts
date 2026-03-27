@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getScriptDir } from '../config/iniManager';
+import { getLogDir } from '../config/iniManager';
 
 const router = Router();
 
@@ -13,9 +13,9 @@ const LOG_FILES: Record<string, string> = {
 
 // GET /api/logs/files - 返回所有日志文件的元数据
 router.get('/files', (_req: Request, res: Response) => {
-  const scriptDir = getScriptDir();
+  const logDir = getLogDir();
   const result = Object.entries(LOG_FILES).map(([key, filename]) => {
-    const filePath = path.join(scriptDir, filename);
+    const filePath = path.join(logDir, filename);
     let size = 0;
     let lastModified: string | null = null;
     if (fs.existsSync(filePath)) {
@@ -34,7 +34,7 @@ router.get('/:type', (req: Request, res: Response) => {
   if (!filename) {
     return res.status(404).json({ success: false, error: '日志类型不存在' });
   }
-  const filePath = path.join(getScriptDir(), filename);
+  const filePath = path.join(getLogDir(), filename);
   if (!fs.existsSync(filePath)) {
     return res.json({ success: true, data: '' });
   }
@@ -49,7 +49,7 @@ router.delete('/:type', (req: Request, res: Response) => {
   if (!filename) {
     return res.status(404).json({ success: false, error: '日志类型不存在' });
   }
-  const filePath = path.join(getScriptDir(), filename);
+  const filePath = path.join(getLogDir(), filename);
   if (fs.existsSync(filePath)) {
     fs.writeFileSync(filePath, '');
   }

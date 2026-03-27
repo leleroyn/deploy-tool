@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execFile } from 'child_process';
 import multer from 'multer';
-import { getProject, getScriptDir } from '../config/iniManager';
+import { getProject, getScriptDir, getLogDir } from '../config/iniManager';
 
 const router = Router();
 
@@ -41,7 +41,7 @@ export interface BackupCheckResult {
  * 日志格式：[2026-03-27 13:40:28] [INFO] 项目 xxx 备份成功，服务器 1.2.3.4，备份文件：...
  */
 function checkBackupToday(projectName: string, configuredServers: string[]): BackupCheckResult {
-  const logPath = path.join(getScriptDir(), 'backup_pj.log');
+  const logPath = path.join(getLogDir(), 'backup_pj.log');
   if (!fs.existsSync(logPath)) {
     return {
       backed: false,
