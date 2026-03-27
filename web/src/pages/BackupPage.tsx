@@ -1,13 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Terminal } from '@xterm/xterm';
-import { Archive, Play, Loader, Package } from 'lucide-react';
+import {
+  Archive, Play, Loader, Package,
+  Server, HardDrive, FolderOpen, RotateCcw, Tag,
+  CheckCircle, XCircle, RefreshCw,
+} from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { api } from '../api/http';
 import { createTaskWs } from '../api/ws';
 import TerminalOutput from '../components/TerminalOutput';
 import TaskStatusBadge from '../components/TaskStatusBadge';
-import { TaskStatus } from '../types';
+import { TaskStatus, PreflightData } from '../types';
 
 const BackupPage: React.FC = () => {
   const location = useLocation();
@@ -21,9 +25,32 @@ const BackupPage: React.FC = () => {
   const terminalRef = useRef<Terminal | null>(null);
   const wsCloseRef = useRef<(() => void) | null>(null);
 
+  // 项目备份状态
+  const [preflight, setPreflight] = useState<PreflightData | null>(null);
+  const [preflightLoading, setPreflightLoading] = useState(false);
+
   useEffect(() => {
     loadProjects();
   }, []);
+
+  // 切换到具体项目时加载备份状态
+  useEffect(() => {
+    if (!selectedProject || selectedProject === 'all') {
+      setPreflight(null);
+      return;
+    }
+    loadPreflight();
+  }, [selectedProject]);
+
+  const loadPreflight = async () => {
+    if (!selectedProject || selectedProject === 'all') return;
+    setPreflightLoading(true);
+    const res = await api.deployPreflight(selectedProject);
+    setPreflightLoading(false);
+    if (res.success && res.data) {
+      setPreflight(res.data);
+    }
+  };
 
   const handleBackup = async () => {
     if (isRunning) return;
@@ -60,6 +87,8 @@ const BackupPage: React.FC = () => {
         setTaskStatus(msg.data as TaskStatus);
         setIsRunning(false);
         setBackupResult([...results]);
+        // 备份完成后刷新今日备份状态
+        loadPreflight();
       }
     });
   };
@@ -102,7 +131,130 @@ const BackupPage: React.FC = () => {
             {taskStatus && <TaskStatusBadge status={taskStatus} />}
           </div>
         </div>
+
+        {/* 项目配置信息卡片（仅选择具体项目时显示） */}
+        {selectedProject && selectedProject !== 'all' && (() => {
+          const proj = projects.find(p => p.name === selectedProject);
+          if (!proj) return null;
+          return (
+            <div className="mt-4 pt-4 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5">
+              <div className="flex items-start gap-2 text-xs">
+                <Server size={13} className="text-text-secondary mt-0.5 flex-shrink-0" />
+                <div>
+                  <span className="text-text-secondary mr-2">目标服务器</span>
+                  <span className="font-mono text-text-primary">{proj.server.join('、') || '—'}</span>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 text-xs">
+                <HardDrive size={13} className="text-text-secondary mt-0.5 flex-shrink-0" />
+                <div>
+                  <span className="text-text-secondary mr-2">远程目录</span>
+                  <span className="font-mono text-text-primary">{proj.remoteDir || '—'}</span>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 text-xs">
+                <FolderOpen size={13} className="text-text-secondary mt-0.5 flex-shrink-0" />
+                <div>
+                  <span className="text-text-secondary mr-2">备份目录</span>
+                  <span className="font-mono text-text-primary">{proj.backupDir || '—'}</span>
+                </div>
+              </div>
+              {proj.restartCmd && (
+                <div className="flex items-start gap-2 text-xs">
+                  <RotateCcw size={13} className="text-text-secondary mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="text-text-secondary mr-2">重启命令</span>
+                    <span className="font-mono text-text-primary">{proj.restartCmd}</span>
+                  </div>
+                </div>
+              )}
+              {proj.bindPorts.length > 0 && (
+                <div className="flex items-start gap-2 text-xs">
+                  <Tag size={13} className="text-text-secondary mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="text-text-secondary mr-2">监听端口</span>
+                    <span className="font-mono text-text-primary">{proj.bindPorts.join('、')}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
+
+      {/* 今日备份状态面板（仅选择具体项目时显示） */}
+      {selectedProject && selectedProject !== 'all' && (
+        <div className="bg-bg-secondary border border-border rounded-xl p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[14px] font-semibold text-text-primary flex items-center gap-2">
+              <Archive size={16} className="text-primary-cyan" />
+              今日备份状态
+            </h2>
+            <button
+              onClick={loadPreflight}
+              disabled={preflightLoading}
+              className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={12} className={preflightLoading ? 'animate-spin' : ''} />
+              刷新
+            </button>
+          </div>
+
+          {preflightLoading && (
+            <div className="flex items-center gap-2 text-sm text-text-secondary py-1">
+              <Loader size={14} className="animate-spin" />
+              查询中...
+            </div>
+          )}
+
+          {preflight && !preflightLoading && (
+            <div className={`rounded-lg p-4 border ${
+              preflight.backup.backed
+                ? 'bg-status-success/5 border-status-success/30'
+                : 'bg-status-error/5 border-status-error/30'
+            }`}>
+              <div className="flex items-center gap-2 mb-2">
+                {preflight.backup.backed
+                  ? <CheckCircle size={16} className="text-status-success flex-shrink-0" />
+                  : <XCircle size={16} className="text-status-error flex-shrink-0" />}
+                <span className={`text-sm font-medium ${preflight.backup.backed ? 'text-status-success' : 'text-status-error'}`}>
+                  {preflight.backup.backed ? '今日已备份 ✓' : '今日尚未备份 ✗'}
+                </span>
+              </div>
+
+              {preflight.backup.servers && preflight.backup.servers.length > 0 && (
+                <div className="mt-2 space-y-1.5 pl-6">
+                  {preflight.backup.servers.map(srv => (
+                    <div key={srv.server} className="flex items-start gap-2 text-xs">
+                      {srv.success
+                        ? <CheckCircle size={12} className="text-status-success flex-shrink-0 mt-0.5" />
+                        : <XCircle size={12} className="text-status-error flex-shrink-0 mt-0.5" />}
+                      <div>
+                        <span className={`font-mono font-medium ${srv.success ? 'text-status-success' : 'text-status-error'}`}>
+                          {srv.server}
+                        </span>
+                        {srv.success && srv.time && (
+                          <span className="text-text-secondary ml-2">{srv.time}</span>
+                        )}
+                        {srv.success && srv.backupFile && (
+                          <div className="text-text-secondary font-mono truncate max-w-xs mt-0.5" title={srv.backupFile}>
+                            {srv.backupFile.split('/').pop()}
+                          </div>
+                        )}
+                        {!srv.success && (
+                          <span className="text-text-secondary ml-2">今日尚无成功记录</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="text-xs text-text-secondary mt-2 pl-6">{preflight.backup.detail}</div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Backup results */}
       {backupResult.length > 0 && (
