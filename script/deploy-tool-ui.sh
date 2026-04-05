@@ -27,7 +27,7 @@ else
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CONFIG_FILE="${SCRIPT_DIR}/config.ini"
+CONFIG_FILE="${SCRIPT_DIR}/config.toml"
 DEPLOY_SCRIPT="${SCRIPT_DIR}/deploy.sh"
 BACKUP_SCRIPT="${SCRIPT_DIR}/backup_pj.sh"
 CHECK_PORTS_SCRIPT="${SCRIPT_DIR}/check_ports.sh"
@@ -130,9 +130,14 @@ check_files() {
 }
 check_files
 
-# 从 config.ini 提取项目列表（排除 ssh 节）
+# 从 config.toml 提取项目列表（排除 ssh 节）
 get_projects() {
-    awk '/^\[.*\]$/ { gsub(/^\[|\]$/, "", $0); if ($0 != "ssh") print $0 }' "$CONFIG_FILE" | sort
+    cat "$CONFIG_FILE" | toml | node -e "
+        process.stdin.on('data', d => {
+            const j = JSON.parse(d);
+            if (j.deploy) Object.keys(j.deploy).sort().forEach(k => console.log(k));
+        });
+    " 2>/dev/null
 }
 
 # 显示标题
@@ -207,7 +212,7 @@ while true; do
         1)  # 备份
             projects=($(get_projects))
             if [ ${#projects[@]} -eq 0 ]; then
-                print_error "没有找到任何项目配置，请检查 config.ini"
+                print_error "没有找到任何项目配置，请检查 config.toml"
                 read -p "按回车键继续..."
                 continue
             fi
@@ -247,7 +252,7 @@ while true; do
         2)  # 部署
             projects=($(get_projects))
             if [ ${#projects[@]} -eq 0 ]; then
-                print_error "没有找到任何项目配置，请检查 config.ini"
+                print_error "没有找到任何项目配置，请检查 config.toml"
                 read -p "按回车键继续..."
                 continue
             fi
@@ -275,7 +280,7 @@ while true; do
         3)  # 检测端口
             projects=($(get_projects))
             if [ ${#projects[@]} -eq 0 ]; then
-                print_error "没有找到任何项目配置，请检查 config.ini"
+                print_error "没有找到任何项目配置，请检查 config.toml"
                 read -p "按回车键继续..."
                 continue
             fi

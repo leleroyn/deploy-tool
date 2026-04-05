@@ -24,7 +24,7 @@ fi
 
 # ========== 全局配置 ==========
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CONFIG_FILE="${SCRIPT_DIR}/config.ini"
+CONFIG_FILE="${SCRIPT_DIR}/config.toml"
 # 日志写到可写目录（Docker 下 /app/logs 为可写 volume，本地退回脚本目录）
 LOG_DIR="${LOG_BASE_DIR:-${SCRIPT_DIR}}"
 mkdir -p "$LOG_DIR" 2>/dev/null || true
@@ -36,34 +36,36 @@ if [ ! -f "$CONFIG_FILE" ]; then
     exit 1
 fi
 
-# ========== INI 解析函数（自动去除 CRLF）==========
-get_ini_value() {
-    local section="$1"
-    local key="$2"
-    local ini_file="$3"
-    sed 's/\r$//' "$ini_file" | awk -F= -v section="$section" -v key="$key" '
-    $0 ~ "^\\[" section "\\]" { in_section=1; next }
-    /^\[/ && $0 !~ "^\\[" section "\\]" { in_section=0 }
-    in_section && $1 ~ "^[[:space:]]*" key "[[:space:]]*$" {
-        gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2)
-        print $2
-        exit
-    }
-    '
+# ========== TOML 解析函数 ==========
+get_toml_value() {
+    local path="$1"
+    cat "$CONFIG_FILE" | toml | node -e "
+        process.stdin.on('data', d => {
+            const j = JSON.parse(d);
+            const keys = '$path'.split('.');
+            let val = j;
+            for (const k of keys) { val = val[k]; }
+            if (val === undefined || val === null) process.exit(1);
+            if (Array.isArray(val)) console.log(val.join(','));
+            else console.log(val);
+        });
+    " 2>/dev/null
 }
 
-get_sections() {
-    sed 's/\r$//' "$CONFIG_FILE" | awk '/^[[:space:]]*\[.*\][[:space:]]*$/ {
-        gsub(/^[[:space:]]*\[|\][[:space:]]*$/, "", $0);
-        print $0
-    }' | sort -u
+get_projects() {
+    cat "$CONFIG_FILE" | toml | node -e "
+        process.stdin.on('data', d => {
+            const j = JSON.parse(d);
+            if (j.deploy) Object.keys(j.deploy).sort().forEach(k => console.log(k));
+        });
+    " 2>/dev/null
 }
 
 # ========== SSH 配置 ==========
-SSH_USER=$(get_ini_value "ssh" "user" "$CONFIG_FILE")
+SSH_USER=$(get_toml_value "ssh.user")
 [ -z "$SSH_USER" ] && SSH_USER="root"
 
-SSH_KEY=$(get_ini_value "ssh" "key" "$CONFIG_FILE")
+SSH_KEY=$(get_toml_value "ssh.key")
 if [ -n "$SSH_KEY" ]; then
     SSH_KEY_ARG="-i $SSH_KEY"
 else
@@ -103,7 +105,7 @@ log() {
 usage() {
     echo "  ${BOLD}用法:${RESET} $0 <项目英文名称>"
     echo "  ${BOLD}可用的项目:${RESET}"
-    get_sections | grep -v '^ssh$' | while read -r p; do
+    get_projects | while read -r p; do
         echo "    ${GREEN}$p${RESET}"
     done
     exit 1
@@ -116,17 +118,17 @@ fi
 
 PROJECT_NAME="$1"
 
-if ! get_sections | grep -qx "$PROJECT_NAME"; then
+if ! get_projects | grep -qx "$PROJECT_NAME"; then
     echo "  ${RED}${BOLD}[✘]${RESET} ${RED}错误: 未知的项目名称 '$PROJECT_NAME'${RESET}"
     usage
 fi
 
 # ========== 读取项目配置 ==========
-SERVER_LIST_RAW=$(get_ini_value "$PROJECT_NAME" "server" "$CONFIG_FILE")
-LOCAL_DIR=$(get_ini_value "$PROJECT_NAME" "local_dir" "$CONFIG_FILE")
-REMOTE_DIR=$(get_ini_value "$PROJECT_NAME" "remote_dir" "$CONFIG_FILE")
-EXCLUDE_PATTERNS=$(get_ini_value "$PROJECT_NAME" "exclude" "$CONFIG_FILE")
-RESTART_CMD=$(get_ini_value "$PROJECT_NAME" "restart_cmd" "$CONFIG_FILE")
+SERVER_LIST_RAW=$(get_toml_value "deploy.$PROJECT_NAME.server")
+LOCAL_DIR=$(get_toml_value "deploy.$PROJECT_NAME.local_dir")
+REMOTE_DIR=$(get_toml_value "deploy.$PROJECT_NAME.remote_dir")
+EXCLUDE_PATTERNS=$(get_toml_value "deploy.$PROJECT_NAME.exclude")
+RESTART_CMD=$(get_toml_value "deploy.$PROJECT_NAME.restart_cmd")
 
 if [ -z "$SERVER_LIST_RAW" ]; then
     echo "  ${RED}${BOLD}[✘]${RESET} ${RED}错误: 项目 $PROJECT_NAME 缺少 server 配置${RESET}"
@@ -156,16 +158,14 @@ for pattern in "${EXCLUDE_PATTERNS_ARRAY[@]}"; do
     fi
 done
 
-# 显示项目信息（美化）
-echo ""
-echo "  ${BOLD}${MAGENTA}┌─ 部署项目: ${GREEN}$PROJECT_NAME${RESET}"
-echo "  ${DIM}$(printf '%54s' | tr ' ' '-')${RESET}"
-echo "  ${BOLD}本地源目录:${RESET} $LOCAL_DIR"
-echo "  ${BOLD}远程目标目录:${RESET} $REMOTE_DIR"
-echo "  ${BOLD}排除模式:${RESET} $EXCLUDE_PATTERNS"
-echo "  ${BOLD}目标服务器:${RESET} ${SERVER_LIST[*]}"
-echo "  ${BOLD}重启命令:${RESET} ${RESTART_CMD:-无}"
-echo "  ${BOLD}干跑模式:${RESET} $([ $DRY_RUN -eq 1 ] && echo "${YELLOW}是${RESET}" || echo "否")"
+# 显示项目信息
+echo "部署项目: $PROJECT_NAME"
+echo "本地源目录: $LOCAL_DIR"
+echo "远程目标目录: $REMOTE_DIR"
+echo "目标服务器: ${SERVER_LIST[*]}"
+echo "重启命令: ${RESTART_CMD:-无}"
+echo "干跑模式: $([ $DRY_RUN -eq 1 ] && echo "是" || echo "否")"
+echo "---"
 
 global_failed=false
 
@@ -173,15 +173,12 @@ for SERVER in "${SERVER_LIST[@]}"; do
     SERVER="$(echo "$SERVER" | xargs)"
     [ -z "$SERVER" ] && continue
 
-    echo ""
-    echo "  ${BOLD}${BLUE}┌─ 部署到服务器: ${WHITE}$SERVER${RESET}"
-    echo "  ${BLUE}│${RESET}"
+    echo "[$SERVER] 开始部署..."
 
     if [ ! -d "$LOCAL_DIR" ]; then
-        echo "  ${BLUE}│${RESET} ${RED}${BOLD}[✘]${RESET} ${RED}错误: 本地源目录 '$LOCAL_DIR' 不存在${RESET}"
+        echo "[$SERVER] 错误: 本地源目录 '$LOCAL_DIR' 不存在"
         log "ERROR" "项目 $PROJECT_NAME 部署失败，服务器 $SERVER，本地源目录不存在: $LOCAL_DIR"
         global_failed=true
-        echo "  ${BLUE}└─ 完成${RESET}"
         continue
     fi
 
@@ -206,74 +203,66 @@ for SERVER in "${SERVER_LIST[@]}"; do
     SSH_CMD="ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER} \"$REMOTE_EXTRACT_CMD\""
 
     if [ $DRY_RUN -eq 1 ]; then
-        echo "  ${BLUE}│${RESET} ${YELLOW}[干跑模式] 本地打包:${RESET} ${TAR_CMD[*]}"
-        echo "  ${BLUE}│${RESET} ${YELLOW}[干跑模式] 上传:${RESET} $SCP_CMD"
-        echo "  ${BLUE}│${RESET} ${YELLOW}[干跑模式] 远程解压:${RESET} $SSH_CMD"
-        echo "  ${BLUE}│${RESET} ${YELLOW}[干跑模式] 本地清理: rm -f '$LOCAL_TARBALL'${RESET}"
+        echo "[$SERVER] [干跑] 打包: ${TAR_CMD[*]}"
+        echo "[$SERVER] [干跑] 上传: $SCP_CMD"
+        echo "[$SERVER] [干跑] 解压: $SSH_CMD"
         if [ -n "$RESTART_CMD" ]; then
-            echo "  ${BLUE}│${RESET} ${YELLOW}[干跑模式] 远程重启: ssh ${SSH_USER}@${SERVER} \"$RESTART_CMD\"${RESET}"
+            echo "[$SERVER] [干跑] 重启: ssh ${SSH_USER}@${SERVER} \"$RESTART_CMD\""
         fi
         log "INFO" "项目 $PROJECT_NAME 干跑部署，服务器 $SERVER"
-        echo "  ${BLUE}└─ 完成${RESET}"
         continue
     fi
 
-    # 实际执行
-    echo "  ${BLUE}│${RESET} ${CYAN}创建本地 tarball...${RESET}"
+    echo "[$SERVER] 打包中..."
     if ! "${TAR_CMD[@]}"; then
-        echo "  ${BLUE}│${RESET} ${RED}${BOLD}[✘]${RESET} ${RED}错误: 本地打包失败${RESET}"
+        echo "[$SERVER] 错误: 本地打包失败"
         log "ERROR" "项目 $PROJECT_NAME 部署失败，服务器 $SERVER，本地打包失败"
         global_failed=true
-        echo "  ${BLUE}└─ 完成${RESET}"
         continue
     fi
 
-    echo "  ${BLUE}│${RESET} ${CYAN}上传 tarball 到 $SERVER ...${RESET}"
+    echo "[$SERVER] 上传中..."
     if ! eval "$SCP_CMD"; then
-        echo "  ${BLUE}│${RESET} ${RED}${BOLD}[✘]${RESET} ${RED}错误: scp 上传失败${RESET}"
+        echo "[$SERVER] 错误: scp 上传失败"
         rm -f "$LOCAL_TARBALL"
         log "ERROR" "项目 $PROJECT_NAME 部署失败，服务器 $SERVER，scp 上传失败"
         global_failed=true
-        echo "  ${BLUE}└─ 完成${RESET}"
         continue
     fi
 
-    echo "  ${BLUE}│${RESET} ${CYAN}远程解压到 $REMOTE_DIR ...${RESET}"
+    echo "[$SERVER] 远程解压中..."
     if ! eval "$SSH_CMD"; then
-        echo "  ${BLUE}│${RESET} ${RED}${BOLD}[✘]${RESET} ${RED}错误: 远程解压失败${RESET}"
+        echo "[$SERVER] 错误: 远程解压失败"
         rm -f "$LOCAL_TARBALL"
         log "ERROR" "项目 $PROJECT_NAME 部署失败，服务器 $SERVER，远程解压失败"
         global_failed=true
-        echo "  ${BLUE}└─ 完成${RESET}"
         continue
     fi
 
     rm -f "$LOCAL_TARBALL"
 
     if [ -n "$RESTART_CMD" ]; then
-        echo "  ${BLUE}│${RESET} ${CYAN}执行重启命令: $RESTART_CMD${RESET}"
+        echo "[$SERVER] 执行重启: $RESTART_CMD"
         if ssh -o StrictHostKeyChecking=no $SSH_KEY_ARG "${SSH_USER}@${SERVER}" "$RESTART_CMD" > /dev/null; then
-            echo "  ${BLUE}│${RESET} ${GREEN}${BOLD}[✔]${RESET} ${GREEN}重启命令执行成功${RESET}"
+            echo "[$SERVER] 重启成功"
             log "INFO" "项目 $PROJECT_NAME 部署成功，服务器 $SERVER，重启命令执行成功: $RESTART_CMD"
         else
-            echo "  ${BLUE}│${RESET} ${RED}${BOLD}[✘]${RESET} ${RED}重启命令执行失败${RESET}"
+            echo "[$SERVER] 错误: 重启命令执行失败"
             log "ERROR" "项目 $PROJECT_NAME 部署成功但重启命令执行失败，服务器 $SERVER，命令: $RESTART_CMD"
             global_failed=true
-            echo "  ${BLUE}└─ 完成${RESET}"
             continue
         fi
     fi
 
-    echo "  ${BLUE}│${RESET} ${GREEN}${BOLD}[✔]${RESET} ${GREEN}部署成功: $SERVER${RESET}"
+    echo "[$SERVER] 部署成功"
     log "INFO" "项目 $PROJECT_NAME 部署成功，服务器 $SERVER，本地目录 $LOCAL_DIR -> 远程目录 $REMOTE_DIR"
-    echo "  ${BLUE}└─ 完成${RESET}"
 done
 
-echo ""
+echo "---"
 if [ "$global_failed" = true ]; then
-    echo "  ${RED}${BOLD}[✘]${RESET} ${RED}部分服务器部署失败，请检查日志${RESET}"
+    echo "部分服务器部署失败，请检查日志"
     exit 1
 else
-    echo "  ${GREEN}${BOLD}[✔]${RESET} ${GREEN}所有服务器部署成功${RESET}"
+    echo "所有服务器部署成功"
     exit 0
 fi

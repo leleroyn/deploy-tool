@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Rocket, Archive, Radio, FileText, Settings, Menu, Server, Bell, User, LogOut } from 'lucide-react';
+import { LayoutDashboard, Rocket, Archive, Radio, FileText, Settings, Menu, Server, Bell, User, LogOut, Terminal } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: '仪表盘' },
-  { to: '/deploy', icon: Rocket, label: '部署管理' },
   { to: '/backup', icon: Archive, label: '备份管理' },
+  { to: '/deploy', icon: Rocket, label: '部署管理' },
   { to: '/ports', icon: Radio, label: '端口检测' },
+  { to: '/remote', icon: Terminal, label: '远程维护' },
   { to: '/logs', icon: FileText, label: '日志历史' },
   { to: '/settings', icon: Settings, label: '系统设置' },
 ];

@@ -31,8 +31,9 @@ RUN npm run build
 # ============================================================
 FROM node:20-alpine AS production
 
-# 安装 SSH 客户端（脚本需要 ssh/scp）
-RUN apk add --no-cache openssh-client bash unzip
+# 安装 SSH 客户端（脚本需要 ssh/scp）+ toml-cli（配置读取）
+RUN apk add --no-cache openssh-client bash unzip && \
+    npm install -g toml-cli
 
 WORKDIR /app
 
@@ -47,13 +48,13 @@ COPY --from=backend-builder /app/server/dist ./dist
 COPY --from=frontend-builder /app/web/dist ./public
 
 # 脚本目录挂载进来（运行时通过 volume 提供）
-# config.ini 和 script/ 通过 volume 挂载，不打包进镜像
+# config.toml 和 script/ 通过 volume 挂载，不打包进镜像
 
 EXPOSE 3001
 
 ENV NODE_ENV=production \
     SCRIPT_DIR=/app/script \
-    CONFIG_FILE=/app/config.ini \
+    CONFIG_FILE=/app/config.toml \
     LOG_BASE_DIR=/app/logs
 
 # 以非 root 用户运行

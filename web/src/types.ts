@@ -16,7 +16,7 @@ export interface SSHConfig {
   key: string;
 }
 
-export type TaskType = 'deploy' | 'backup' | 'check-ports';
+export type TaskType = 'deploy' | 'backup' | 'check-ports' | 'remote';
 export type TaskStatus = 'pending' | 'running' | 'success' | 'failed';
 
 export interface Task {
@@ -73,3 +73,27 @@ export interface PreflightData {
   localDirExists: boolean;
   files: LocalDirFile[];
 }
+
+export interface RemoteCommand {
+  name: string;
+  server: string[];
+  command: string;
+  group: string;
+}
+
+export interface CommandExecResult {
+  server: string;
+  success: boolean;
+  output: string;
+}
+
+export interface CommandHistory {
+  commandName: string;
+  server: string;
+  status: 'success' | 'error';
+  time: string;
+}
+
+export type GroupedCommands = {
+  [group: string]: RemoteCommand[];
+};

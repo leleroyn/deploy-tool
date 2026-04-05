@@ -16,7 +16,7 @@ export interface SSHConfig {
   key: string;
 }
 
-export type TaskType = 'deploy' | 'backup' | 'check-ports';
+export type TaskType = 'deploy' | 'backup' | 'check-ports' | 'remote';
 export type TaskStatus = 'pending' | 'running' | 'success' | 'failed';
 
 export interface Task {

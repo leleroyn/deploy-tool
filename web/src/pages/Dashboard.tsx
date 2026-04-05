@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Rocket, Archive, Radio, RefreshCw, Activity, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Rocket, Archive, Radio, RefreshCw, Activity, CheckCircle, XCircle, Clock, Terminal } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import ProjectCard from '../components/ProjectCard';
 import TaskStatusBadge from '../components/TaskStatusBadge';
@@ -10,6 +10,7 @@ const taskTypeLabel: Record<string, string> = {
   deploy: '部署',
   backup: '备份',
   'check-ports': '端口检测',
+  remote: '远程维护',
 };
 
 const Dashboard: React.FC = () => {
@@ -91,7 +92,7 @@ const Dashboard: React.FC = () => {
             <p>暂无项目配置</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {projects.map((project) => (
               <ProjectCard key={project.name} project={project} />
             ))}
@@ -105,11 +106,12 @@ const Dashboard: React.FC = () => {
           <span className="w-1 h-4 rounded-full bg-primary-cyan inline-block" />
           快捷操作
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: '一键部署', desc: '选择项目进行部署', icon: Rocket, to: '/deploy', color: 'from-primary/20 to-primary/5 border-primary/30 hover:border-primary/60', iconColor: 'text-primary-light' },
             { label: '项目备份', desc: '备份全部或单个项目', icon: Archive, to: '/backup', color: 'from-primary-cyan/20 to-primary-cyan/5 border-primary-cyan/30 hover:border-primary-cyan/60', iconColor: 'text-primary-cyan' },
             { label: '端口检测', desc: '检查服务端口状态', icon: Radio, to: '/ports', color: 'from-status-success/20 to-status-success/5 border-status-success/30 hover:border-status-success/60', iconColor: 'text-status-success' },
+            { label: '远程维护', desc: '远程命令执行与运维', icon: Terminal, to: '/remote', color: 'from-status-warning/20 to-status-warning/5 border-status-warning/30 hover:border-status-warning/60', iconColor: 'text-status-warning' },
           ].map((action) => (
             <button
               key={action.label}

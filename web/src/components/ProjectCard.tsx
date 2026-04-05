@@ -1,6 +1,6 @@
 import React from 'react';
 import { Project } from '../types';
-import { Server, Cpu, Globe, Zap } from 'lucide-react';
+import { Server, Cpu, Globe, Zap, Radio } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface ProjectCardProps {
@@ -61,6 +61,12 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onDeploy, onBackup }
       {/* Actions */}
       <div className="flex gap-2 pt-3 border-t border-border">
         <button
+          onClick={() => { onBackup?.(); navigate('/backup', { state: { project: project.name } }); }}
+          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium bg-bg-tertiary hover:bg-border text-text-muted border border-border hover:border-border/80 transition-all duration-200"
+        >
+          备份
+        </button>
+        <button
           onClick={() => { onDeploy?.(); navigate('/deploy', { state: { project: project.name } }); }}
           className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium bg-primary/10 hover:bg-primary/20 text-primary-light border border-primary/20 hover:border-primary/40 transition-all duration-200"
         >
@@ -68,10 +74,11 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onDeploy, onBackup }
           部署
         </button>
         <button
-          onClick={() => { onBackup?.(); navigate('/backup', { state: { project: project.name } }); }}
-          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium bg-bg-tertiary hover:bg-border text-text-muted border border-border hover:border-border/80 transition-all duration-200"
+          onClick={() => navigate('/ports', { state: { project: project.name } })}
+          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium bg-status-success/10 hover:bg-status-success/20 text-status-success border border-status-success/20 hover:border-status-success/40 transition-all duration-200"
         >
-          备份
+          <Radio size={12} />
+          检测
         </button>
       </div>
     </div>

@@ -9,6 +9,7 @@ const LOG_FILES: Record<string, string> = {
   deploy: 'deploy.log',
   backup: 'backup_pj.log',
   ports: 'check_ports.log',
+  remote: 'exec_remote_script.log',
 };
 
 // GET /api/logs/files - 返回所有日志文件的元数据

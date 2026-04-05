@@ -55,7 +55,7 @@ function processNext() {
   const running = updateTask(task, { status: 'running', startTime: new Date().toISOString() });
   console.log(`[Task] 开始执行: ${task.type} / ${task.project} (id=${taskId})`);
 
-  let scriptName: 'deploy' | 'backup' | 'check-ports';
+  let scriptName: 'deploy' | 'backup' | 'check-ports' | 'remote';
   let args: string[];
   let env: Record<string, string> | undefined;
 
@@ -65,6 +65,10 @@ function processNext() {
     env = task.dryRun ? { DRY_RUN: '1' } : {};
   } else if (task.type === 'backup') {
     scriptName = 'backup';
+    args = [task.project];
+    env = {};
+  } else if (task.type === 'remote') {
+    scriptName = 'remote';
     args = [task.project];
     env = {};
   } else {

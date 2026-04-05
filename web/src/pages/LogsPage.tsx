@@ -9,12 +9,14 @@ const typeLabel: Record<string, string> = {
   deploy: '部署',
   backup: '备份',
   'check-ports': '端口检测',
+  remote: '远程维护',
 };
 
 const logTypeMap: Record<string, string> = {
   deploy: '部署日志',
   backup: '备份日志',
   ports: '端口检测日志',
+  remote: '远程维护日志',
 };
 
 const LogsPage: React.FC = () => {
@@ -126,7 +128,7 @@ const LogsPage: React.FC = () => {
           日志文件
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
           {logFiles.map((file) => (
             <div key={file.key} className={`bg-bg-secondary border rounded-xl p-4 transition-all cursor-pointer ${activeLog === file.key ? 'border-primary/50 shadow-lg shadow-primary/10' : 'border-border hover:border-border/80'}`}>
               <div className="flex items-start justify-between mb-2">

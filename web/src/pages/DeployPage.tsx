@@ -1,15 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Terminal } from '@xterm/xterm';
 import {
   Rocket, Play, CheckCircle, XCircle, Loader, Upload, File, Trash2,
   ShieldCheck, ShieldAlert, FolderOpen, RefreshCw, AlertTriangle,
-  Server, HardDrive, RotateCcw, Tag
+  Server, HardDrive, RotateCcw, Tag, Terminal
 } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { api } from '../api/http';
 import { createTaskWs } from '../api/ws';
-import TerminalOutput from '../components/TerminalOutput';
 import TaskStatusBadge from '../components/TaskStatusBadge';
 import { TaskStatus, PreflightData, LocalDirFile } from '../types';
 
@@ -24,7 +22,8 @@ const DeployPage: React.FC = () => {
   const [taskStatus, setTaskStatus] = useState<TaskStatus | null>(null);
   const [currentStep, setCurrentStep] = useState(-1);
   const [isRunning, setIsRunning] = useState(false);
-  const terminalRef = useRef<Terminal | null>(null);
+  const terminalRef = useRef<HTMLPreElement>(null);
+  const [terminalOutput, setTerminalOutput] = useState('');
   const wsCloseRef = useRef<(() => void) | null>(null);
 
   // 预检状态
@@ -109,11 +108,7 @@ const DeployPage: React.FC = () => {
   const handleDeploy = async () => {
     if (!selectedProject || isRunning) return;
 
-    if (terminalRef.current) {
-      terminalRef.current.clear();
-      terminalRef.current.write('\x1b[90m部署任务启动中...\r\n\x1b[0m');
-    }
-
+    setTerminalOutput('部署任务启动中...\n');
     setIsRunning(true);
     setTaskStatus('running');
     setCurrentStep(0);
@@ -122,7 +117,7 @@ const DeployPage: React.FC = () => {
     if (!res.success || !res.data) {
       setTaskStatus('failed');
       setIsRunning(false);
-      terminalRef.current?.write(`\r\n\x1b[31m[错误] ${res.error || '启动失败'}\x1b[0m\r\n`);
+      setTerminalOutput(prev => prev + `\n[错误] ${res.error || '启动失败'}\n`);
       return;
     }
 
@@ -130,20 +125,19 @@ const DeployPage: React.FC = () => {
 
     if (wsCloseRef.current) wsCloseRef.current();
     wsCloseRef.current = createTaskWs(taskId, (msg) => {
-      if (msg.type === 'log' && terminalRef.current) {
-        terminalRef.current.write(msg.data);
+      if (msg.type === 'log') {
+        setTerminalOutput(prev => prev + msg.data);
         const text = msg.data;
-        if (text.includes('创建本地 tarball') || text.includes('打包')) setCurrentStep(0);
-        if (text.includes('上传 tarball') || text.includes('scp')) setCurrentStep(1);
+        if (text.includes('打包')) setCurrentStep(0);
+        if (text.includes('上传')) setCurrentStep(1);
         if (text.includes('远程解压')) setCurrentStep(2);
-        if (text.includes('重启命令') || text.includes('restart')) setCurrentStep(3);
+        if (text.includes('重启')) setCurrentStep(3);
       }
       if (msg.type === 'complete') {
         const status = msg.data as TaskStatus;
         setTaskStatus(status);
         setIsRunning(false);
         if (status === 'success') setCurrentStep(steps.length);
-        // 部署完后刷新文件列表
         loadPreflight();
       }
     });
@@ -481,11 +475,18 @@ const DeployPage: React.FC = () => {
         </div>
       )}
 
-      {/* 终端 */}
-      <TerminalOutput
-        onTerminalReady={(term) => { terminalRef.current = term; }}
-        minHeight={360}
-      />
+      {/* 终端输出 */}
+      {terminalOutput && (
+        <div className="bg-bg-secondary border border-border rounded-xl p-6">
+          <h2 className="text-[14px] font-semibold text-text-primary mb-4 flex items-center gap-2">
+            <Terminal size={14} />
+            执行输出
+          </h2>
+          <pre className="bg-bg-tertiary border border-border rounded-lg p-4 text-xs font-mono text-text-primary overflow-x-auto whitespace-pre-wrap max-h-80 overflow-y-auto">
+            {terminalOutput}
+          </pre>
+        </div>
+      )}
     </div>
   );
 };

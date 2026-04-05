@@ -10,6 +10,7 @@ import tasksRouter from './routes/tasks';
 import logsRouter from './routes/logs';
 import sshRouter from './routes/ssh';
 import deployRouter from './routes/deploy';
+import commandsRouter from './routes/commands';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -37,6 +38,7 @@ app.use('/api/tasks', authMiddleware, tasksRouter);
 app.use('/api/logs', authMiddleware, logsRouter);
 app.use('/api/ssh-config', authMiddleware, sshRouter);
 app.use('/api/deploy', authMiddleware, deployRouter);
+app.use('/api/commands', authMiddleware, commandsRouter);
 
 const server = http.createServer(app);
 setupWebSocket(server);

@@ -1,4 +1,4 @@
-import { ApiResponse, Project, SSHConfig, Task, LogFileMeta, PreflightData } from '../types';
+import { ApiResponse, Project, SSHConfig, Task, LogFileMeta, PreflightData, GroupedCommands, CommandExecResult, CommandHistory } from '../types';
 
 const BASE = '/api';
 
@@ -99,4 +99,10 @@ export const api = {
 
   deployDeleteFile: (project: string, filename: string) =>
     request(`/deploy/files/${encodeURIComponent(project)}/${encodeURIComponent(filename)}`, { method: 'DELETE' }),
+
+  // 远程命令
+  getCommands: () => request<GroupedCommands>('/commands'),
+  execCommand: (name: string) =>
+    request<Task>(`/tasks/remote`, { method: 'POST', body: JSON.stringify({ commandName: name }) }),
+  getCommandHistory: (count: number = 100) => request<CommandHistory[]>(`/commands/history?count=${count}`),
 };

@@ -33,7 +33,7 @@ Deploy Tool 为一套完整的 **Web 管理平台**，核心理念是：
 | 📦 **部署包上传**       | 支持拖拽上传 `.zip` / `.tar.gz` / `.tar`，压缩包自动解压；支持直接上传 `.jar` 等任意格式 |
 | 🌐 **多服务器支持**      | 单个项目可配置多台服务器，一次操作按顺序覆盖所有节点                                     |
 | ⏱️ **任务队列**        | 同一时间只允许一个任务运行，避免并发冲突                                           |
-| ⚙️ **在线配置编辑**      | 通过 Web 设置页直接编辑 `config.ini`，无需登录服务器                            |
+| ⚙️ **在线配置编辑**      | 通过 Web 设置页直接编辑 `config.toml`，无需登录服务器                            |
 | 🐳 **Docker 一键部署** | 多阶段 Dockerfile 构建，单容器单端口，开箱即用                                  |
 | 🔑 **JWT 认证**      | 密码通过环境变量配置，无状态 JWT token 认证                                    |
 
@@ -78,7 +78,7 @@ Deploy Tool 为一套完整的 **Web 管理平台**，核心理念是：
 │  └──────┬──────┘ └──────┬───────┘ └────────┬─────────┘    │
 │         │               │                  │               │
 │         └───────────────┼──────────────────┘               │
-│                    读取 config.ini                           │
+│                    读取 config.toml                           │
 └──────────────────────────┬──────────────────────────────────┘
                            │ SSH
                            ▼
@@ -124,27 +124,28 @@ git clone https://github.com/your-username/deploy-tool.git
 cd deploy-tool
 ```
 
-**第二步：配置 config.ini**
+**第二步：配置 config.toml**
 
 ```bash
 # 编辑配置文件，填入你的项目信息
-nano script/config.ini
+nano script/config.toml
 ```
 
 配置示例：
 
-```ini
+```toml
 [ssh]
-user = root
-key  = /root/.ssh/id_rsa
+user = "root"
+key = "/root/.ssh/id_rsa"
 
-[my-app]
-server      = 192.168.1.100,192.168.1.101   # 多台服务器用逗号分隔
-remote_dir  = /opt/project/my-app
-backup_dir  = /opt/backup
-local_dir   = /path/to/local/build
-restart_cmd = docker restart my-app
-bind-port   = 8080,3306
+[deploy.my-app]
+server = ["192.168.1.100", "192.168.1.101"]
+remote_dir = "/opt/project/my-app"
+backup_dir = "/opt/backup"
+local_dir = "/path/to/local/build"
+restart_cmd = "docker restart my-app"
+bind-port = [8080, 3306]
+exclude = ["logs", "log", "tmp", "temp", "*.log", "*.logs"]
 ```
 
 **第三步：启动容器**
@@ -157,9 +158,9 @@ docker run -d \
   -u root \
   -e DEPLOY_PASSWORD=你的密码 \
   -e SCRIPT_DIR=/app/script \
-  -e CONFIG_FILE=/app/config.ini \
+  -e CONFIG_FILE=/app/config.toml \
   -e SKIP_SSH_INIT=1 \
-  -v "$(pwd)/script/config.ini:/app/config.ini:ro" \
+  -v "$(pwd)/script/config.toml:/app/config.toml:ro" \
   -v "$(pwd)/script:/app/script:ro" \
   -v "/root/.ssh:/root/.ssh:ro" \
   leleroyn/deploy-tool:0.1.4
@@ -189,17 +190,17 @@ cd web && npm install && npm run dev      # 端口 5173
 
 ## ⚙️ 配置说明
 
-### config.ini 字段说明
+### config.toml 字段说明
 
 | 字段            | 必填      | 说明                                    |
 | ------------- | ------- | ------------------------------------- |
-| `server`      | ✅       | 目标服务器 IP，多台用逗号分隔                      |
+| `server`      | ✅       | 目标服务器 IP 数组，如 `["192.168.1.100"]`       |
 | `remote_dir`  | ✅       | 远程应用目录                                |
 | `backup_dir`  | ✅（备份时）  | 远程备份存放路径                              |
 | `local_dir`   | ✅（部署时）  | 本地部署包所在目录                             |
-| `exclude`     | ❌       | 打包时排除的路径，默认 `logs,log,tmp,temp,*.log` |
+| `exclude`     | ❌       | 打包时排除的路径数组，默认 `["logs", "log", "tmp", "temp", "*.log", "*.logs"]` |
 | `restart_cmd` | ❌       | 部署完成后在远程服务器执行的重启命令                    |
-| `bind-port`   | ✅（端口检测） | 要检测的端口号，多个用逗号分隔                       |
+| `bind-port`   | ✅（端口检测） | 要检测的端口号数组，如 `[8080, 3306]`              |
 
 ### 📄 License
 

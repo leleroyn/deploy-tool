@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { createTask, getTask, getAllTasks, isProjectBusy } from '../tasks/taskQueue';
-import { getProjects } from '../config/iniManager';
+import { getProjects, getCommand } from '../config/iniManager';
 
 const router = Router();
 
@@ -47,6 +47,20 @@ router.post('/check-ports', (req: Request, res: Response) => {
     return res.status(400).json({ success: false, error: '缺少项目名称' });
   }
   const task = createTask('check-ports', project);
+  res.json({ success: true, data: task });
+});
+
+// POST /api/tasks/remote
+router.post('/remote', (req: Request, res: Response) => {
+  const { commandName } = req.body;
+  if (!commandName) {
+    return res.status(400).json({ success: false, error: '缺少命令名称' });
+  }
+  const cmd = getCommand(commandName);
+  if (!cmd) {
+    return res.status(404).json({ success: false, error: '命令不存在' });
+  }
+  const task = createTask('remote', commandName);
   res.json({ success: true, data: task });
 });
 

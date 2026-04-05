@@ -26,7 +26,7 @@ fi
 
 # ========== 全局配置 ==========
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CONFIG_FILE="${SCRIPT_DIR}/config.ini"
+CONFIG_FILE="${SCRIPT_DIR}/config.toml"
 # 日志写到可写目录（Docker 下 /app/logs 为可写 volume，本地退回脚本目录）
 LOG_DIR="${LOG_BASE_DIR:-${SCRIPT_DIR}}"
 mkdir -p "$LOG_DIR" 2>/dev/null || true
@@ -38,27 +38,29 @@ if [ ! -f "$CONFIG_FILE" ]; then
     exit 1
 fi
 
-# ========== INI 解析函数 ==========
-get_ini_value() {
-    local section="$1"
-    local key="$2"
-    local ini_file="$3"
-    sed 's/\r$//' "$ini_file" | awk -F= -v section="$section" -v key="$key" '
-    $0 ~ "^\\[" section "\\]" { in_section=1; next }
-    /^\[/ && $0 !~ "^\\[" section "\\]" { in_section=0 }
-    in_section && $1 ~ "^[[:space:]]*" key "[[:space:]]*$" {
-        gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2)
-        print $2
-        exit
-    }
-    '
+# ========== TOML 解析函数 ==========
+get_toml_value() {
+    local path="$1"
+    cat "$CONFIG_FILE" | toml | node -e "
+        process.stdin.on('data', d => {
+            const j = JSON.parse(d);
+            const keys = '$path'.split('.');
+            let val = j;
+            for (const k of keys) { val = val[k]; }
+            if (val === undefined || val === null) process.exit(1);
+            if (Array.isArray(val)) console.log(val.join(','));
+            else console.log(val);
+        });
+    " 2>/dev/null
 }
 
-get_sections() {
-    sed 's/\r$//' "$CONFIG_FILE" | awk '/^[[:space:]]*\[.*\][[:space:]]*$/ {
-        gsub(/^[[:space:]]*\[|\][[:space:]]*$/, "", $0);
-        print $0
-    }' | sort -u
+get_projects() {
+    cat "$CONFIG_FILE" | toml | node -e "
+        process.stdin.on('data', d => {
+            const j = JSON.parse(d);
+            if (j.deploy) Object.keys(j.deploy).sort().forEach(k => console.log(k));
+        });
+    " 2>/dev/null
 }
 
 # ========== 日志记录函数 ==========
@@ -72,7 +74,7 @@ log() {
 usage() {
     echo "  ${BOLD}用法:${RESET} $0 <项目英文名称> 或 $0 all"
     echo "  ${BOLD}可用的项目:${RESET}"
-    get_sections | grep -v '^ssh$' | while read -r p; do
+    get_projects | while read -r p; do
         echo "    ${GREEN}$p${RESET}"
     done
     echo ""
@@ -87,16 +89,16 @@ fi
 
 PROJECT_NAME="$1"
 
-if [ "$PROJECT_NAME" != "all" ] && ! get_sections | grep -qx "$PROJECT_NAME"; then
+if [ "$PROJECT_NAME" != "all" ] && ! get_projects | grep -qx "$PROJECT_NAME"; then
     echo "  ${RED}${BOLD}[✘]${RESET} ${RED}错误: 未知的项目名称 '$PROJECT_NAME'${RESET}"
     usage
 fi
 
 # ========== SSH 配置 ==========
-SSH_USER=$(get_ini_value "ssh" "user" "$CONFIG_FILE")
+SSH_USER=$(get_toml_value "ssh.user")
 [ -z "$SSH_USER" ] && SSH_USER="root"
 
-SSH_KEY=$(get_ini_value "ssh" "key" "$CONFIG_FILE")
+SSH_KEY=$(get_toml_value "ssh.key")
 if [ -n "$SSH_KEY" ]; then
     SSH_KEY_ARG="-i $SSH_KEY"
 else
@@ -127,11 +129,119 @@ fi
 
 # ========== 处理全部项目备份 ==========
 if [ "$PROJECT_NAME" = "all" ]; then
-    ALL_PROJECTS=($(get_sections | grep -v '^ssh$'))
+    ALL_PROJECTS=($(get_projects))
     if [ ${#ALL_PROJECTS[@]} -eq 0 ]; then
-        echo "  ${RED}${BOLD}[✘]${RESET} ${RED}错误: 没有找到任何项目配置${RESET}"
+        echo "错误: 没有找到任何项目配置"
         exit 1
     fi
+    echo "开始备份所有项目..."
+    echo "---"
+    for p in "${ALL_PROJECTS[@]}"; do
+        echo "[$p] 开始备份..."
+        "$0" "$p"
+        if [ $? -ne 0 ]; then
+            echo "[$p] 备份失败"
+        else
+            echo "[$p] 备份完成"
+        fi
+        echo "---"
+    done
+    echo "所有项目备份处理完成"
+    exit 0
+fi
+
+# ========== 单项目备份逻辑 ==========
+SERVER_LIST_RAW=$(get_toml_value "deploy.$PROJECT_NAME.server")
+REMOTE_DIR=$(get_toml_value "deploy.$PROJECT_NAME.remote_dir")
+BACKUP_BASE_DIR=$(get_toml_value "deploy.$PROJECT_NAME.backup_dir")
+EXCLUDE_PATTERNS=$(get_toml_value "deploy.$PROJECT_NAME.exclude")
+
+if [ -z "$SERVER_LIST_RAW" ]; then
+    echo "错误: 项目 $PROJECT_NAME 缺少 server 配置"
+    exit 1
+fi
+if [ -z "$REMOTE_DIR" ]; then
+    echo "错误: 项目 $PROJECT_NAME 缺少 remote_dir 配置"
+    exit 1
+fi
+if [ -z "$BACKUP_BASE_DIR" ]; then
+    echo "错误: 项目 $PROJECT_NAME 缺少 backup_dir 配置"
+    exit 1
+fi
+
+IFS=',' read -ra SERVER_LIST <<< "$SERVER_LIST_RAW"
+
+if [ -z "$EXCLUDE_PATTERNS" ]; then
+    EXCLUDE_PATTERNS="logs,log,tmp,temp,*.log,*.logs"
+fi
+IFS=',' read -ra EXCLUDE_PATTERNS_ARRAY <<< "$EXCLUDE_PATTERNS"
+
+EXCLUDE_ARGS=""
+for pattern in "${EXCLUDE_PATTERNS_ARRAY[@]}"; do
+    pattern="$(echo "$pattern" | xargs)"
+    if [ -n "$pattern" ]; then
+        EXCLUDE_ARGS+=" --exclude='$pattern'"
+    fi
+done
+
+echo "备份项目: $PROJECT_NAME"
+echo "目标服务器: ${SERVER_LIST[*]}"
+echo "---"
+
+global_failed=false
+
+for SERVER in "${SERVER_LIST[@]}"; do
+    SERVER="$(echo "$SERVER" | xargs)"
+    [ -z "$SERVER" ] && continue
+
+    echo "[$SERVER] 开始备份..."
+
+    TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+    BACKUP_FILE="${PROJECT_NAME}_${TIMESTAMP}.tar.gz"
+    SSH_HOST="${SSH_USER}@${SERVER}"
+
+    # 远程命令：打包并输出大小
+    REMOTE_CMD="
+set -e
+mkdir -p '$BACKUP_BASE_DIR'
+tar $EXCLUDE_ARGS -czf '$BACKUP_BASE_DIR/$BACKUP_FILE' \\
+    -C \"\$(dirname '$REMOTE_DIR')\" \"\$(basename '$REMOTE_DIR')\"
+BACKUP_SIZE=\$(du -h '$BACKUP_BASE_DIR/$BACKUP_FILE' 2>/dev/null | cut -f1)
+echo \"BACKUP_SIZE=\${BACKUP_SIZE:-未知}\"
+"
+
+    # 执行远程命令，捕获输出
+    EXIT_CODE=0
+    OUTPUT=$(ssh $SSH_KEY_ARG "$SSH_HOST" "$REMOTE_CMD" 2>&1 | tr -d '\r') || EXIT_CODE=$?
+
+    if [ $EXIT_CODE -eq 0 ]; then
+        SIZE_LINE=$(echo "$OUTPUT" | grep '^BACKUP_SIZE=' | head -1)
+        if [ -n "$SIZE_LINE" ]; then
+            SIZE=$(echo "$SIZE_LINE" | cut -d= -f2)
+            echo "[$SERVER] 备份成功: $BACKUP_BASE_DIR/$BACKUP_FILE ($SIZE)"
+            log "INFO" "项目 $PROJECT_NAME 备份成功，服务器 $SERVER，备份文件：$BACKUP_BASE_DIR/$BACKUP_FILE，大小：$SIZE"
+        else
+            echo "[$SERVER] 备份成功: $BACKUP_BASE_DIR/$BACKUP_FILE"
+            log "INFO" "项目 $PROJECT_NAME 备份成功，服务器 $SERVER，备份文件：$BACKUP_BASE_DIR/$BACKUP_FILE"
+        fi
+    else
+        echo "[$SERVER] 备份失败"
+        if [ -n "$OUTPUT" ]; then
+            echo "[$SERVER] 错误: $OUTPUT"
+        fi
+        log "ERROR" "项目 $PROJECT_NAME 备份失败，服务器 $SERVER"
+        global_failed=true
+    fi
+done
+
+echo "---"
+if [ "$global_failed" = true ]; then
+    echo "部分服务器备份失败，请检查日志"
+    exit 1
+else
+    echo "所有服务器备份成功"
+    exit 0
+fi
     echo "${BOLD}${CYAN}开始备份所有项目...${RESET}"
     for p in "${ALL_PROJECTS[@]}"; do
         echo ""
@@ -148,10 +258,10 @@ if [ "$PROJECT_NAME" = "all" ]; then
 fi
 
 # ========== 单项目备份逻辑 ==========
-SERVER_LIST_RAW=$(get_ini_value "$PROJECT_NAME" "server" "$CONFIG_FILE")
-REMOTE_DIR=$(get_ini_value "$PROJECT_NAME" "remote_dir" "$CONFIG_FILE")
-BACKUP_BASE_DIR=$(get_ini_value "$PROJECT_NAME" "backup_dir" "$CONFIG_FILE")
-EXCLUDE_PATTERNS=$(get_ini_value "$PROJECT_NAME" "exclude" "$CONFIG_FILE")
+SERVER_LIST_RAW=$(get_toml_value "deploy.$PROJECT_NAME.server")
+REMOTE_DIR=$(get_toml_value "deploy.$PROJECT_NAME.remote_dir")
+BACKUP_BASE_DIR=$(get_toml_value "deploy.$PROJECT_NAME.backup_dir")
+EXCLUDE_PATTERNS=$(get_toml_value "deploy.$PROJECT_NAME.exclude")
 
 if [ -z "$SERVER_LIST_RAW" ]; then
     echo "  ${RED}${BOLD}[✘]${RESET} ${RED}错误: 项目 $PROJECT_NAME 缺少 server 配置${RESET}"
@@ -208,8 +318,8 @@ echo \"BACKUP_SIZE=\${BACKUP_SIZE:-未知}\"
 "
 
     # 执行远程命令，捕获输出
-    OUTPUT=$(ssh $SSH_KEY_ARG "$SSH_HOST" "$REMOTE_CMD" 2>&1 | tr -d '\r')
-    EXIT_CODE=$?
+    EXIT_CODE=0
+    OUTPUT=$(ssh $SSH_KEY_ARG "$SSH_HOST" "$REMOTE_CMD" 2>&1 | tr -d '\r') || EXIT_CODE=$?
 
     if [ $EXIT_CODE -eq 0 ]; then
         # 成功：解析大小行并打印本地格式信息

@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import DeployPage from './pages/DeployPage';
 import BackupPage from './pages/BackupPage';
 import PortCheckPage from './pages/PortCheckPage';
+import RemoteMaintenancePage from './pages/RemoteMaintenancePage';
 import LogsPage from './pages/LogsPage';
 import SettingsPage from './pages/SettingsPage';
 import LoginPage from './pages/LoginPage';
@@ -56,6 +57,7 @@ function App() {
           <Route path="/deploy" element={<DeployPage />} />
           <Route path="/backup" element={<BackupPage />} />
           <Route path="/ports" element={<PortCheckPage />} />
+          <Route path="/remote" element={<RemoteMaintenancePage />} />
           <Route path="/logs" element={<LogsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>

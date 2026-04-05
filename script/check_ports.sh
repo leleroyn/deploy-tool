@@ -24,7 +24,7 @@ fi
 
 # ========== 全局配置 ==========
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CONFIG_FILE="${SCRIPT_DIR}/config.ini"
+CONFIG_FILE="${SCRIPT_DIR}/config.toml"
 # 日志写到可写目录（Docker 下 /app/logs 为可写 volume，本地退回脚本目录）
 LOG_DIR="${LOG_BASE_DIR:-${SCRIPT_DIR}}"
 mkdir -p "$LOG_DIR" 2>/dev/null || true
@@ -36,27 +36,29 @@ if [ ! -f "$CONFIG_FILE" ]; then
     exit 1
 fi
 
-# ========== INI 解析函数 ==========
-get_ini_value() {
-    local section="$1"
-    local key="$2"
-    local ini_file="$3"
-    sed 's/\r$//' "$ini_file" | awk -F= -v section="$section" -v key="$key" '
-    $0 ~ "^\\[" section "\\]" { in_section=1; next }
-    /^\[/ && $0 !~ "^\\[" section "\\]" { in_section=0 }
-    in_section && $1 ~ "^[[:space:]]*" key "[[:space:]]*$" {
-        gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2)
-        print $2
-        exit
-    }
-    '
+# ========== TOML 解析函数 ==========
+get_toml_value() {
+    local path="$1"
+    cat "$CONFIG_FILE" | toml | node -e "
+        process.stdin.on('data', d => {
+            const j = JSON.parse(d);
+            const keys = '$path'.split('.');
+            let val = j;
+            for (const k of keys) { val = val[k]; }
+            if (val === undefined || val === null) process.exit(1);
+            if (Array.isArray(val)) console.log(val.join(','));
+            else console.log(val);
+        });
+    " 2>/dev/null
 }
 
-get_sections() {
-    sed 's/\r$//' "$CONFIG_FILE" | awk '/^[[:space:]]*\[.*\][[:space:]]*$/ {
-        gsub(/^[[:space:]]*\[|\][[:space:]]*$/, "", $0);
-        print $0
-    }' | sort -u
+get_projects() {
+    cat "$CONFIG_FILE" | toml | node -e "
+        process.stdin.on('data', d => {
+            const j = JSON.parse(d);
+            if (j.deploy) Object.keys(j.deploy).sort().forEach(k => console.log(k));
+        });
+    " 2>/dev/null
 }
 
 # ========== 日志记录函数 ==========
@@ -70,7 +72,7 @@ log() {
 usage() {
     echo "  ${BOLD}用法:${RESET} $0 <项目英文名称> 或 $0 all"
     echo "  ${BOLD}可用的项目:${RESET}"
-    get_sections | grep -v '^ssh$' | while read -r p; do
+    get_projects | while read -r p; do
         echo "    ${GREEN}$p${RESET}"
     done
     echo ""
@@ -85,16 +87,16 @@ fi
 
 PROJECT_NAME="$1"
 
-if [ "$PROJECT_NAME" != "all" ] && ! get_sections | grep -qx "$PROJECT_NAME"; then
+if [ "$PROJECT_NAME" != "all" ] && ! get_projects | grep -qx "$PROJECT_NAME"; then
     echo "  ${RED}${BOLD}[✘]${RESET} ${RED}错误: 未知的项目名称 '$PROJECT_NAME'${RESET}"
     usage
 fi
 
 # ========== SSH 配置 ==========
-SSH_USER=$(get_ini_value "ssh" "user" "$CONFIG_FILE")
+SSH_USER=$(get_toml_value "ssh.user")
 [ -z "$SSH_USER" ] && SSH_USER="root"
 
-SSH_KEY=$(get_ini_value "ssh" "key" "$CONFIG_FILE")
+SSH_KEY=$(get_toml_value "ssh.key")
 if [ -n "$SSH_KEY" ]; then
     SSH_KEY_ARG="-i $SSH_KEY"
 else
@@ -135,19 +137,16 @@ check_ports() {
         if [ -z "$port" ]; then
             continue
         fi
-        # 通过 SSH 检查端口是否监听
-        # 使用 ss 或 netstat，如果不存在则用 nc -z
         CHECK_CMD="ss -tln | grep -q ':$port ' || netstat -tln 2>/dev/null | grep -q ':$port ' || (command -v nc >/dev/null && nc -z 127.0.0.1 $port >/dev/null 2>&1)"
         ssh_err=$(ssh -o ConnectTimeout=5 $SSH_KEY_ARG "${SSH_USER}@${server}" "$CHECK_CMD" 2>&1 >/dev/null)
         ssh_exit=$?
         if [ $ssh_exit -eq 0 ]; then
-            echo -n "${GREEN}${BOLD}[✔]${RESET}"
+            echo "[$server] 端口 $port: 正常"
         else
-            echo -n "${RED}${BOLD}[✘]${RESET}"
-            [ -n "$ssh_err" ] && echo -n " ${DIM}(${ssh_err})${RESET}"
+            echo "[$server] 端口 $port: 未监听"
+            [ -n "$ssh_err" ] && echo "[$server] 错误: $ssh_err"
             all_ok=false
         fi
-        echo -n " $port "
     done
     if [ "$all_ok" = true ]; then
         return 0
@@ -158,72 +157,70 @@ check_ports() {
 
 # ========== 处理全部项目检测 ==========
 if [ "$PROJECT_NAME" = "all" ]; then
-    ALL_PROJECTS=($(get_sections | grep -v '^ssh$'))
+    ALL_PROJECTS=($(get_projects))
     if [ ${#ALL_PROJECTS[@]} -eq 0 ]; then
-        echo "  ${RED}${BOLD}[✘]${RESET} ${RED}错误: 没有找到任何项目配置${RESET}"
+        echo "错误: 没有找到任何项目配置"
         exit 1
     fi
-    echo "${BOLD}${CYAN}开始检测所有项目的端口...${RESET}"
+    echo "开始检测所有项目的端口..."
+    echo "---"
     for p in "${ALL_PROJECTS[@]}"; do
-        echo ""
-        echo "  ${BOLD}${MAGENTA}┌─ 检测项目: ${GREEN}$p${RESET}"
-        echo "  ${DIM}$(printf '%54s' | tr ' ' '-')${RESET}"
-        "$0" "$p"
-        if [ $? -ne 0 ]; then
-            echo "  ${YELLOW}${BOLD}[!]${RESET} ${YELLOW}项目 $p 检测失败，继续处理后续项目...${RESET}"
+        echo "[$p] 开始检测..."
+        SUB_EXIT=0
+        "$0" "$p" || SUB_EXIT=$?
+        if [ $SUB_EXIT -ne 0 ]; then
+            echo "[$p] 检测失败"
+        else
+            echo "[$p] 检测完成"
         fi
+        echo "---"
     done
-    echo ""
-    echo "  ${GREEN}${BOLD}[✔]${RESET} ${GREEN}所有项目检测完成${RESET}"
+    echo "所有项目检测完成"
     exit 0
 fi
 
 # ========== 单项目检测逻辑 ==========
-SERVER_LIST_RAW=$(get_ini_value "$PROJECT_NAME" "server" "$CONFIG_FILE")
-BIND_PORTS=$(get_ini_value "$PROJECT_NAME" "bind-port" "$CONFIG_FILE")
+SERVER_LIST_RAW=$(get_toml_value "deploy.$PROJECT_NAME.server")
+BIND_PORTS=$(get_toml_value "deploy.$PROJECT_NAME.bind-port")
 
 if [ -z "$SERVER_LIST_RAW" ]; then
-    echo "  ${RED}${BOLD}[✘]${RESET} ${RED}错误: 项目 $PROJECT_NAME 缺少 server 配置${RESET}"
+    echo "错误: 项目 $PROJECT_NAME 缺少 server 配置"
     exit 1
 fi
 if [ -z "$BIND_PORTS" ]; then
-    echo "  ${RED}${BOLD}[✘]${RESET} ${RED}错误: 项目 $PROJECT_NAME 缺少 bind-port 配置${RESET}"
+    echo "错误: 项目 $PROJECT_NAME 缺少 bind-port 配置"
     exit 1
 fi
 
 IFS=',' read -ra SERVER_LIST <<< "$SERVER_LIST_RAW"
 
-echo "  ${BOLD}项目 ${CYAN}$PROJECT_NAME${RESET}${BOLD} 配置了 ${#SERVER_LIST[@]} 个服务器${RESET}"
+echo "检测项目: $PROJECT_NAME"
+echo "端口: $BIND_PORTS"
+echo "目标服务器: ${SERVER_LIST[*]}"
+echo "---"
+
 global_failed=false
 
 for SERVER in "${SERVER_LIST[@]}"; do
     SERVER="$(echo "$SERVER" | xargs)"
     [ -z "$SERVER" ] && continue
 
-    echo ""
-    echo "  ${BOLD}${BLUE}┌─ 服务器: ${WHITE}$SERVER${RESET}"
-    echo "  ${BLUE}│${RESET}"
-
-    echo -n "  ${BLUE}│${RESET} ${BOLD}端口状态:${RESET} "
+    echo "[$SERVER] 开始检测端口..."
     if check_ports "$SERVER" "$BIND_PORTS"; then
-        echo ""
-        echo "  ${BLUE}│${RESET} ${GREEN}${BOLD}[✔]${RESET} ${GREEN}所有端口均正常${RESET}"
+        echo "[$SERVER] 所有端口正常"
         log "INFO" "项目 $PROJECT_NAME 服务器 $SERVER 端口 $BIND_PORTS 检测成功"
     else
-        echo ""
-        echo "  ${BLUE}│${RESET} ${RED}${BOLD}[✘]${RESET} ${RED}部分端口未监听${RESET}"
+        echo "[$SERVER] 部分端口未监听"
         log "ERROR" "项目 $PROJECT_NAME 服务器 $SERVER 端口 $BIND_PORTS 检测失败"
         global_failed=true
     fi
-    echo "  ${BLUE}└─ 完成${RESET}"
 done
 
+echo "---"
 if [ "$global_failed" = true ]; then
-    echo ""
-    echo "  ${RED}${BOLD}[✘]${RESET} ${RED}部分服务器端口检测失败${RESET}"
+    echo "部分服务器端口检测失败"
     exit 1
 else
-    echo ""
-    echo "  ${GREEN}${BOLD}[✔]${RESET} ${GREEN}项目 $PROJECT_NAME 所有服务器端口检测成功${RESET}"
+    echo "所有服务器端口检测成功"
     exit 0
 fi

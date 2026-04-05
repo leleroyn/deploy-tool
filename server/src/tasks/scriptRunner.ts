@@ -3,7 +3,7 @@ import * as path from 'path';
 import { getScriptDir } from '../config/iniManager';
 
 export interface RunOptions {
-  script: 'deploy' | 'backup' | 'check-ports';
+  script: 'deploy' | 'backup' | 'check-ports' | 'remote';
   args: string[];
   env?: Record<string, string>;
   onData: (chunk: string) => void;
@@ -16,6 +16,7 @@ export function runScript(opts: RunOptions): () => void {
     deploy: path.join(scriptDir, 'deploy.sh'),
     backup: path.join(scriptDir, 'backup_pj.sh'),
     'check-ports': path.join(scriptDir, 'check_ports.sh'),
+    remote: path.join(scriptDir, 'exec_remote_script.sh'),
   };
 
   const scriptPath = scriptMap[opts.script];
