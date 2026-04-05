@@ -108,8 +108,8 @@ const Dashboard: React.FC = () => {
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: '一键部署', desc: '选择项目进行部署', icon: Rocket, to: '/deploy', color: 'from-primary/20 to-primary/5 border-primary/30 hover:border-primary/60', iconColor: 'text-primary-light' },
             { label: '项目备份', desc: '备份全部或单个项目', icon: Archive, to: '/backup', color: 'from-primary-cyan/20 to-primary-cyan/5 border-primary-cyan/30 hover:border-primary-cyan/60', iconColor: 'text-primary-cyan' },
+            { label: '一键部署', desc: '选择项目进行部署', icon: Rocket, to: '/deploy', color: 'from-primary/20 to-primary/5 border-primary/30 hover:border-primary/60', iconColor: 'text-primary-light' },
             { label: '端口检测', desc: '检查服务端口状态', icon: Radio, to: '/ports', color: 'from-status-success/20 to-status-success/5 border-status-success/30 hover:border-status-success/60', iconColor: 'text-status-success' },
             { label: '远程维护', desc: '远程命令执行与运维', icon: Terminal, to: '/remote', color: 'from-status-warning/20 to-status-warning/5 border-status-warning/30 hover:border-status-warning/60', iconColor: 'text-status-warning' },
           ].map((action) => (

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Radio, Play, RefreshCw, Loader, CheckCircle, XCircle, Terminal } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { api } from '../api/http';
@@ -13,10 +14,13 @@ interface PortResult {
 }
 
 const PortCheckPage: React.FC = () => {
+  const location = useLocation();
   const { projects, loadProjects } = useAppStore();
   const [results, setResults] = useState<PortResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [selectedProject, setSelectedProject] = useState('all');
+  const [selectedProject, setSelectedProject] = useState<string>(
+    (location.state as any)?.project || 'all'
+  );
   const [terminalOutput, setTerminalOutput] = useState('');
   const wsCloseRef = useRef<(() => void) | null>(null);
 
