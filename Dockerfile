@@ -31,8 +31,11 @@ RUN npm run build
 # ============================================================
 FROM node:20-alpine AS production
 
-# 安装 SSH 客户端（脚本需要 ssh/scp）
-RUN apk add --no-cache openssh-client bash unzip
+# 安装 SSH 客户端（脚本需要 ssh/scp）+ 设置时区为 Asia/Shanghai
+RUN apk add --no-cache openssh-client bash unzip tzdata \
+    && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo "Asia/Shanghai" > /etc/timezone \
+    && apk del tzdata
 
 WORKDIR /app
 
