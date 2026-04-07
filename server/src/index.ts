@@ -18,9 +18,16 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// 请求日志
+// 请求日志（过滤敏感字段）
 app.use((req, _res, next) => {
-  console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.path}`, req.body && Object.keys(req.body).length ? req.body : '');
+  const sensitivePaths = ['/api/auth', '/api/ssh-config'];
+  const isSensitive = sensitivePaths.some(p => req.path.startsWith(p));
+
+  if (isSensitive) {
+    console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.path} [sensitive body omitted]`);
+  } else {
+    console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.path}`, req.body && Object.keys(req.body).length ? req.body : '');
+  }
   next();
 });
 
@@ -53,6 +60,21 @@ app.get(/^(?!\/api|\/ws).*/, (_req, res) => {
 
 server.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`Deploy Tool Server running on http://localhost:${PORT}`);
+});
+
+// 全局错误处理中间件（放在所有路由之后）
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('[Unhandled Error]', err);
+  res.status(500).json({ success: false, error: '服务器内部错误' });
+});
+
+// 全局未捕获异常处理（防止进程静默崩溃）
+process.on('uncaughtException', (err) => {
+  console.error('[Uncaught Exception]', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[Unhandled Rejection]', reason);
 });
 
 export default app;

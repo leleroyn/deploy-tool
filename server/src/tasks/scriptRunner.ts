@@ -48,6 +48,7 @@ export function runScript(opts: RunOptions): () => void {
   });
 
   child.on('error', (err: Error) => {
+    console.error('[ScriptRunner] 脚本启动失败:', opts.script, err);
     opts.onData(`\r\n[错误] 脚本启动失败: ${err.message}\r\n`);
     opts.onExit(1);
   });
