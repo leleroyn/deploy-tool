@@ -31,14 +31,14 @@ RUN npm run build
 # ============================================================
 FROM node:20-alpine AS production
 
-# 安装 SSH 客户端（脚本需要 ssh/scp）和 toml CLI（脚本解析 config.toml）
+# 安装 SSH 客户端（脚本需要 ssh/scp）
 RUN apk add --no-cache openssh-client bash unzip
 
 WORKDIR /app
 
-# 只拷贝生产依赖
+# 安装生产依赖（后端 + 脚本 TOML 解析共用）
 COPY server/package*.json ./
-RUN npm ci --omit=dev && npm install -g toml
+RUN npm ci --omit=dev
 
 # 拷贝后端编译产物
 COPY --from=backend-builder /app/server/dist ./dist

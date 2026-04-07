@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as toml from 'toml';
+import * as TOML from '@iarna/toml';
 import { Project, SSHConfig } from '../types';
 
 const SCRIPT_DIR = process.env.SCRIPT_DIR || path.join(__dirname, '../../script');
@@ -35,7 +35,7 @@ function readRaw(): RawConfig {
   }
   try {
     const content = fs.readFileSync(CONFIG_FILE, 'utf-8');
-    return toml.parse(content);
+    return TOML.parse(content) as any;
   } catch (err) {
     console.error('[Config] 读取或解析配置失败:', CONFIG_FILE, err);
     throw err;

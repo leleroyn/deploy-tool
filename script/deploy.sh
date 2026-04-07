@@ -24,9 +24,9 @@ fi
 
 # ========== 全局配置 ==========
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CONFIG_FILE="${SCRIPT_DIR}/config.toml"
+CONFIG_FILE="${SCRIPT_DIR}/../config.toml"
 # 日志写到可写目录（Docker 下 /app/logs 为可写 volume，本地退回脚本目录）
-LOG_DIR="${LOG_BASE_DIR:-${SCRIPT_DIR}}"
+LOG_DIR="${LOG_BASE_DIR:-${SCRIPT_DIR}/../logs}"
 mkdir -p "$LOG_DIR" 2>/dev/null || true
 LOG_FILE="${LOG_DIR}/deploy.log"
 DRY_RUN=${DRY_RUN:-0}
@@ -36,29 +36,16 @@ if [ ! -f "$CONFIG_FILE" ]; then
     exit 1
 fi
 
-# ========== TOML 解析函数 ==========
+# ========== TOML 解析函数（使用 @iarna/toml）==========
+TOML_HELPER="${SCRIPT_DIR}/_toml_parse.js"
+
 get_toml_value() {
     local path="$1"
-    cat "$CONFIG_FILE" | toml | node -e "
-        process.stdin.on('data', d => {
-            const j = JSON.parse(d);
-            const keys = '$path'.split('.');
-            let val = j;
-            for (const k of keys) { val = val[k]; }
-            if (val === undefined || val === null) process.exit(1);
-            if (Array.isArray(val)) console.log(val.join(','));
-            else console.log(val);
-        });
-    " 2>/dev/null
+    node "$TOML_HELPER" get "$CONFIG_FILE" "$path" 2>/dev/null || true
 }
 
 get_projects() {
-    cat "$CONFIG_FILE" | toml | node -e "
-        process.stdin.on('data', d => {
-            const j = JSON.parse(d);
-            if (j.deploy) Object.keys(j.deploy).sort().forEach(k => console.log(k));
-        });
-    " 2>/dev/null
+    node "$TOML_HELPER" keys "$CONFIG_FILE" deploy 2>/dev/null || true
 }
 
 # ========== SSH 配置 ==========
@@ -193,14 +180,14 @@ for SERVER in "${SERVER_LIST[@]}"; do
     done
     TAR_CMD+=(-C "$LOCAL_DIR" .)
 
-    SCP_CMD="scp -o StrictHostKeyChecking=no '$LOCAL_TARBALL' ${SSH_USER}@${SERVER}:'$REMOTE_TARBALL'"
+    SCP_CMD="scp -o StrictHostKeyChecking=no -o ConnectTimeout=10 '$LOCAL_TARBALL' ${SSH_USER}@${SERVER}:'$REMOTE_TARBALL'"
 
     REMOTE_EXTRACT_CMD="
         mkdir -p '$REMOTE_DIR' && \
         tar -xzf '$REMOTE_TARBALL' -C '$REMOTE_DIR' && \
         rm -f '$REMOTE_TARBALL'
     "
-    SSH_CMD="ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER} \"$REMOTE_EXTRACT_CMD\""
+    SSH_CMD="ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${SSH_USER}@${SERVER} \"$REMOTE_EXTRACT_CMD\""
 
     if [ $DRY_RUN -eq 1 ]; then
         echo "[$SERVER] [干跑] 打包: ${TAR_CMD[*]}"
@@ -243,7 +230,7 @@ for SERVER in "${SERVER_LIST[@]}"; do
 
     if [ -n "$RESTART_CMD" ]; then
         echo "[$SERVER] 执行重启: $RESTART_CMD"
-        if ssh -o StrictHostKeyChecking=no $SSH_KEY_ARG "${SSH_USER}@${SERVER}" "$RESTART_CMD" > /dev/null; then
+        if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 $SSH_KEY_ARG "${SSH_USER}@${SERVER}" "$RESTART_CMD" > /dev/null; then
             echo "[$SERVER] 重启成功"
             log "INFO" "项目 $PROJECT_NAME 部署成功，服务器 $SERVER，重启命令执行成功: $RESTART_CMD"
         else

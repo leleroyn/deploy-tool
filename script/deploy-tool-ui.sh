@@ -27,7 +27,7 @@ else
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CONFIG_FILE="${SCRIPT_DIR}/config.toml"
+CONFIG_FILE="${SCRIPT_DIR}/../config.toml"
 DEPLOY_SCRIPT="${SCRIPT_DIR}/deploy.sh"
 BACKUP_SCRIPT="${SCRIPT_DIR}/backup_pj.sh"
 CHECK_PORTS_SCRIPT="${SCRIPT_DIR}/check_ports.sh"
@@ -132,12 +132,7 @@ check_files
 
 # 从 config.toml 提取项目列表（排除 ssh 节）
 get_projects() {
-    cat "$CONFIG_FILE" | toml | node -e "
-        process.stdin.on('data', d => {
-            const j = JSON.parse(d);
-            if (j.deploy) Object.keys(j.deploy).sort().forEach(k => console.log(k));
-        });
-    " 2>/dev/null
+    node "${SCRIPT_DIR}/_toml_parse.js" keys "$CONFIG_FILE" deploy 2>/dev/null || true
 }
 
 # 显示标题

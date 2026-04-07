@@ -8,8 +8,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CONFIG_FILE="${SCRIPT_DIR}/config.toml"
-LOG_DIR="${LOG_BASE_DIR:-${SCRIPT_DIR}}"
+CONFIG_FILE="${SCRIPT_DIR}/../config.toml"
+LOG_DIR="${LOG_BASE_DIR:-${SCRIPT_DIR}/../logs}"
 mkdir -p "$LOG_DIR" 2>/dev/null || true
 LOG_FILE="${LOG_DIR}/exec_remote_script.log"
 
@@ -20,26 +20,11 @@ fi
 
 get_toml_value() {
     local path="$1"
-    cat "$CONFIG_FILE" | toml | node -e "
-        process.stdin.on('data', d => {
-            const j = JSON.parse(d);
-            const keys = '$path'.split('.');
-            let val = j;
-            for (const k of keys) { val = val[k]; }
-            if (val === undefined || val === null) process.exit(1);
-            if (Array.isArray(val)) console.log(val.join(','));
-            else console.log(val);
-        });
-    " 2>/dev/null
+    node "${SCRIPT_DIR}/_toml_parse.js" get "$CONFIG_FILE" "$path" 2>/dev/null || true
 }
 
 get_commands() {
-    cat "$CONFIG_FILE" | toml | node -e "
-        process.stdin.on('data', d => {
-            const j = JSON.parse(d);
-            if (j.command) Object.keys(j.command).sort().forEach(k => console.log(k));
-        });
-    " 2>/dev/null
+    node "${SCRIPT_DIR}/_toml_parse.js" keys "$CONFIG_FILE" command 2>/dev/null || true
 }
 
 SSH_USER=$(get_toml_value "ssh.user")
