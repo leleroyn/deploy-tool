@@ -187,7 +187,11 @@ router.post('/upload/:project', (req: Request, res: Response) => {
   const upload = multer({
     storage: multer.diskStorage({
       destination: (_req, _file, cb) => cb(null, proj.localDir),
-      filename: (_req, file, cb) => cb(null, file.originalname),
+      filename: (_req, file, cb) => {
+        // 只取文件名部分，去除路径防止穿越
+        const safeName = path.basename(file.originalname);
+        cb(null, safeName);
+      },
     }),
     limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB 上限
   }).single('file');

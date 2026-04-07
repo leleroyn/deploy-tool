@@ -46,6 +46,15 @@ router.post('/check-ports', (req: Request, res: Response) => {
   if (!project) {
     return res.status(400).json({ success: false, error: '缺少项目名称' });
   }
+  if (project !== 'all') {
+    const projects = getProjects().map(p => p.name);
+    if (!projects.includes(project)) {
+      return res.status(404).json({ success: false, error: '项目不存在' });
+    }
+  }
+  if (isProjectBusy(project)) {
+    return res.status(409).json({ success: false, error: '该项目正在执行中，请稍后再试' });
+  }
   const task = createTask('check-ports', project);
   res.json({ success: true, data: task });
 });
@@ -59,6 +68,9 @@ router.post('/remote', (req: Request, res: Response) => {
   const cmd = getCommand(commandName);
   if (!cmd) {
     return res.status(404).json({ success: false, error: '命令不存在' });
+  }
+  if (isProjectBusy(commandName)) {
+    return res.status(409).json({ success: false, error: '该命令正在执行中，请稍后再试' });
   }
   const task = createTask('remote', commandName);
   res.json({ success: true, data: task });

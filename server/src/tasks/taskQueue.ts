@@ -5,6 +5,10 @@ import { runScript } from './scriptRunner';
 export type LogListener = (taskId: string, chunk: string) => void;
 export type StatusListener = (task: Task) => void;
 
+// 限制：最多保留 100 条任务记录，单个任务日志最多 2000 条
+const MAX_TASKS = 100;
+const MAX_LOG_ENTRIES = 2000;
+
 const tasks: Map<string, Task> = new Map();
 const logBuffers: Map<string, string[]> = new Map(); // taskId -> 已发日志缓冲
 const logListeners: Set<LogListener> = new Set();
@@ -28,7 +32,11 @@ export function onStatus(listener: StatusListener): () => void {
 function emitLog(taskId: string, chunk: string) {
   // 缓冲日志，供后续连接的 WebSocket 回放
   if (!logBuffers.has(taskId)) logBuffers.set(taskId, []);
-  logBuffers.get(taskId)!.push(chunk);
+  const buf = logBuffers.get(taskId)!;
+  // 只保留最新日志，防止单个任务日志无限增长
+  if (buf.length < MAX_LOG_ENTRIES) {
+    buf.push(chunk);
+  }
   logListeners.forEach(l => l(taskId, chunk));
 }
 
@@ -41,6 +49,28 @@ function updateTask(task: Task, updates: Partial<Task>): Task {
   tasks.set(task.id, updated);
   emitStatus(updated);
   return updated;
+}
+
+// 清理最旧的任务，保留最近 100 条
+function pruneOldTasks() {
+  if (tasks.size <= MAX_TASKS) return;
+
+  const completed: [string, Task][] = [];
+  tasks.forEach((t, id) => {
+    if (t.status === 'success' || t.status === 'failed') {
+      completed.push([id, t]);
+    }
+  });
+
+  // 按开始时间排序，删除最旧的
+  completed.sort((a, b) => new Date(a[1].startTime).getTime() - new Date(b[1].startTime).getTime());
+
+  const toDelete = tasks.size - MAX_TASKS;
+  for (let i = 0; i < toDelete && i < completed.length; i++) {
+    const [id] = completed[i];
+    tasks.delete(id);
+    logBuffers.delete(id);
+  }
 }
 
 function processNext() {
@@ -90,6 +120,7 @@ function processNext() {
       const status: TaskStatus = code === 0 ? 'success' : 'failed';
       updateTask(running, { status, endTime: new Date().toISOString(), exitCode: code });
       runningTaskId = null;
+      pruneOldTasks();
       processNext();
     },
   });
@@ -125,7 +156,14 @@ export function getAllTasks(): Task[] {
 }
 
 export function isProjectBusy(project: string): boolean {
-  if (runningTaskId === null) return false;
-  const task = tasks.get(runningTaskId);
-  return task?.project === project || task?.project === 'all';
+  if (runningTaskId !== null) {
+    const task = tasks.get(runningTaskId);
+    if (task?.project === project || task?.project === 'all') return true;
+  }
+  // 也检查队列中是否有相同项目
+  for (const qId of queue) {
+    const qTask = tasks.get(qId);
+    if (qTask?.project === project || qTask?.project === 'all') return true;
+  }
+  return false;
 }

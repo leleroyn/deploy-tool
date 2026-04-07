@@ -145,7 +145,7 @@ const BackupPage: React.FC = () => {
       <div className="bg-bg-secondary border border-border rounded-xl p-6">
         <h2 className="text-[14px] font-semibold text-text-primary mb-5 flex items-center gap-2">
           <Archive size={16} className="text-primary-cyan" />
-          备份配置
+          备份管理
         </h2>
 
         <div className="flex flex-wrap gap-4 items-end">
@@ -255,7 +255,7 @@ const BackupPage: React.FC = () => {
           )}
 
           {allBackup.length > 0 && (
-            <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-3">
               {allBackup.map((item) => (
                 <div
                   key={item.name}
@@ -267,7 +267,7 @@ const BackupPage: React.FC = () => {
                       : 'border-status-error/30 bg-status-error/5'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 mb-1.5">
                     {item.backed === null
                       ? <MinusCircle size={14} className="text-text-secondary flex-shrink-0" />
                       : item.backed
@@ -401,15 +401,38 @@ const BackupPage: React.FC = () => {
 
       {/* Backup results */}
       {backupResult.length > 0 && (
-        <div className="bg-status-success/5 border border-status-success/20 rounded-xl p-4">
-          <h3 className="text-xs font-medium text-status-success mb-3 flex items-center gap-1.5">
+        <div className={`rounded-xl border p-4 ${
+          taskStatus === 'failed'
+            ? 'bg-status-error/5 border-status-error/20'
+            : 'bg-status-success/5 border-status-success/20'
+        }`}>
+          <h3 className={`text-xs font-medium mb-3 flex items-center gap-1.5 ${
+            taskStatus === 'failed' ? 'text-status-error' : 'text-status-success'
+          }`}>
             <Package size={13} />
-            备份文件
+            备份文件 ({backupResult.length}条)
           </h3>
-          <div className="space-y-1.5">
+          <div className="grid grid-cols-2 gap-3">
             {backupResult.map((r, i) => (
-              <div key={i} className="text-xs font-mono text-text-muted bg-bg-tertiary rounded px-3 py-1.5 border border-border">
-                {r}
+              <div
+                key={i}
+                className={`flex flex-col justify-between p-3 rounded-lg border ${
+                  taskStatus === 'failed'
+                    ? 'bg-status-error/10 border-status-error/20'
+                    : 'bg-bg-secondary border-border'
+                }`}
+              >
+                <div className="flex items-start gap-2 mb-2">
+                  <Package size={13} className={`flex-shrink-0 mt-0.5 ${
+                    taskStatus === 'failed' ? 'text-status-error' : 'text-status-success'
+                  }`} />
+                  <span
+                    className="text-xs font-mono text-text-primary break-all"
+                    title={r}
+                  >
+                    {r}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
