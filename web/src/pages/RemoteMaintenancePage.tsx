@@ -123,7 +123,7 @@ const RemoteMaintenancePage: React.FC = () => {
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <h3 className="text-sm font-medium text-text-primary">{cmd.name}</h3>
-                    <p className="text-xs text-text-secondary mt-1 truncate" title={cmd.command}>
+                    <p className="text-xs text-text-secondary mt-1 break-all" title={cmd.command}>
                       {cmd.command}
                     </p>
                   </div>

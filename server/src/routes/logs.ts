@@ -12,10 +12,13 @@ const LOG_FILES: Record<string, string> = {
   remote: 'exec_remote_script.log',
 };
 
+const LOG_ORDER = ['backup', 'deploy', 'ports', 'remote'];
+
 // GET /api/logs/files - 返回所有日志文件的元数据
 router.get('/files', (_req: Request, res: Response) => {
   const logDir = getLogDir();
-  const result = Object.entries(LOG_FILES).map(([key, filename]) => {
+  const result = LOG_ORDER.map(key => {
+    const filename = LOG_FILES[key];
     const filePath = path.join(logDir, filename);
     let size = 0;
     let lastModified: string | null = null;

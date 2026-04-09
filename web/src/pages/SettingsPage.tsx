@@ -225,7 +225,7 @@ const SettingsPage: React.FC = () => {
                 onClick={() => handleExpandProject(proj.name)}
               >
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-sm text-text-primary">{proj.name}</span>
+                  <span className="font-mono text-xs text-text-primary">{proj.name}</span>
                   <span className="text-[11px] text-text-secondary">{proj.server.join(', ')}</span>
                 </div>
                 <div className="flex items-center gap-2">
