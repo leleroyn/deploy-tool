@@ -83,6 +83,20 @@ const RemoteMaintenancePage: React.FC = () => {
         setTimeout(() => loadHistory(), 500);
       }
     });
+
+    // 方案 3: 超时兜底 (15秒)
+    setTimeout(async () => {
+      const checkRes = await api.getTask(taskId);
+      if (checkRes.success && checkRes.data) {
+        const status = checkRes.data.status;
+        // 如果任务已经结束了，但前端还在 loading
+        if (status === 'success' || status === 'failed') {
+          setRunningTask(prev => prev ? { ...prev, status } : null);
+          setTerminalOutput(prev => prev + `\n\n[超时轮询] 命令${status === 'success' ? '执行成功' : '执行失败'}`);
+          setTimeout(() => loadHistory(), 500);
+        }
+      }
+    }, 15000);
   };
 
   if (loading) {
