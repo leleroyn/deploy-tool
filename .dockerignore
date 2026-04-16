@@ -23,6 +23,10 @@ script/*.log
 .vscode
 .idea
 *.workbuddy
+.opencode
+.claude
+example
+openspec
 
 # 文档
 *.md

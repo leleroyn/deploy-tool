@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Server, Lock, Eye, EyeOff, Loader } from 'lucide-react';
+import { Server, Lock, User as UserIcon, Eye, EyeOff, Loader } from 'lucide-react';
 import { api, setToken } from '../api/http';
 
 interface LoginPageProps {
@@ -7,6 +7,7 @@ interface LoginPageProps {
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -14,17 +15,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password || loading) return;
+    if (!username || !password || loading) return;
 
     setLoading(true);
     setError('');
 
-    const res = await api.login(password);
+    const res = await api.login(username, password);
     if (res.success && res.data?.token) {
       setToken(res.data.token);
       onLogin();
     } else {
-      setError(res.error || '密码错误，请重试');
+      setError(res.error || '用户名或密码错误，请重试');
       setLoading(false);
     }
   };
@@ -44,12 +45,27 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             <Server size={28} className="text-white" />
           </div>
           <h1 className="text-xl font-bold text-gray-800">项目自助发布平台</h1>
-          <p className="text-sm text-gray-400 mt-1">请输入访问密码</p>
+          <p className="text-sm text-gray-400 mt-1">请输入账号信息</p>
         </div>
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-xs text-gray-500 mb-2 font-medium">用户名</label>
+              <div className="relative">
+                <UserIcon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="请输入用户名"
+                  autoFocus
+                  className="w-full pl-9 pr-10 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-700 bg-gray-50 focus:outline-none focus:border-blue-400 focus:bg-white transition-all"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs text-gray-500 mb-2 font-medium">访问密码</label>
               <div className="relative">
@@ -59,7 +75,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="请输入密码"
-                  autoFocus
                   className="w-full pl-9 pr-10 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-700 bg-gray-50 focus:outline-none focus:border-blue-400 focus:bg-white transition-all"
                 />
                 <button
@@ -80,7 +95,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
             <button
               type="submit"
-              disabled={!password || loading}
+              disabled={!username || !password || loading}
               className="w-full py-2.5 rounded-lg text-white text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               style={{ background: '#1677FF' }}
             >
@@ -89,8 +104,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             </button>
           </form>
         </div>
-
-
       </div>
     </div>
   );
