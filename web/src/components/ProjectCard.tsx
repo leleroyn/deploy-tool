@@ -13,7 +13,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onDeploy, onBackup }
   const navigate = useNavigate();
 
   return (
-    <div className="relative bg-bg-secondary border border-border rounded-xl p-5 card-hover transition-all duration-300 group flex flex-col min-h-48 md:min-h-60">
+  <div className="relative bg-bg-secondary border border-border rounded-xl p-4 card-hover transition-all duration-300 group flex flex-col min-h-40">
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
