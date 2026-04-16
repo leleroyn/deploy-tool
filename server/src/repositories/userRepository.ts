@@ -45,9 +45,12 @@ export class UserRepository {
     if (keys.length === 0) return;
 
     const setClause = keys.map(key => `${key} = ?`).join(', ');
-    const values = [...Object.values(data), id];
+    const values = Object.values(data).map(v => {
+      if (typeof v === 'boolean') return v ? 1 : 0;
+      return v;
+    });
 
-    db.prepare(`UPDATE users SET ${setClause} WHERE id = ?`).run(...values);
+    db.prepare(`UPDATE users SET ${setClause} WHERE id = ?`).run(...values, id);
   }
 
   async updateProfile(id: string, { avatar, password }: { avatar?: string; password?: string }): Promise<void> {
@@ -70,7 +73,8 @@ export class UserRepository {
   }
 
   async getAll(): Promise<User[]> {
-    return db.prepare('SELECT id, username, role, is_frozen, avatar, created_at FROM users').all() as User[];
+    const users = db.prepare('SELECT id, username, role, is_frozen, avatar, created_at FROM users').all() as User[];
+    return users.map(u => ({ ...u, is_frozen: Boolean(u.is_frozen) }));
   }
 }
 

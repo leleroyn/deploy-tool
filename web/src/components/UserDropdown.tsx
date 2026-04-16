@@ -5,10 +5,16 @@ import { useNavigate } from 'react-router-dom';
 interface UserDropdownProps {
   username: string;
   avatar?: string;
+  role?: string;
   onLogout: () => void;
 }
 
-const UserDropdown: React.FC<UserDropdownProps> = ({ username, avatar, onLogout }) => {
+const roleLabels: Record<string, string> = {
+  system_admin: '系统管理员',
+  ops_admin: '运维管理员',
+};
+
+const UserDropdown: React.FC<UserDropdownProps> = ({ username, avatar, role, onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -63,8 +69,8 @@ const UserDropdown: React.FC<UserDropdownProps> = ({ username, avatar, onLogout 
               )}
             </div>
             <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">当前用户</p>
               <p className="text-sm font-bold text-gray-700 truncate">{username}</p>
+              {role && <p className="text-[10px] text-gray-400">{roleLabels[role] || role}</p>}
             </div>
           </div>
           

@@ -145,6 +145,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onLogout }) => {
               <UserDropdown
                 username={user.username}
                 avatar={user.avatar}
+                role={user.role}
                 onLogout={onLogout || (() => {})}
               />
             )}

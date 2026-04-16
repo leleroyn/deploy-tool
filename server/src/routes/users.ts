@@ -21,7 +21,7 @@ router.get('/', async (req: Request, res: Response) => {
       return;
     }
 
-    if (user.role !== 'admin') {
+    if (user.role !== 'system_admin') {
       res.status(403).json({ success: false, error: '权限不足' });
       return;
     }
@@ -126,6 +126,53 @@ router.post('/change-password', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/users/ (system_admin only)
+router.post('/', async (req: Request, res: Response) => {
+  const auth = req.headers['authorization'] || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+
+  if (!token) {
+    res.status(401).json({ success: false, error: '未登录' });
+    return;
+  }
+
+  try {
+    const user = await getCurrentUser(token);
+    if (!user || user.role !== 'system_admin') {
+      res.status(403).json({ success: false, error: '权限不足' });
+      return;
+    }
+
+    const { username, password, role } = req.body as { username?: string; password?: string; role?: string };
+
+    if (!username || !password) {
+      res.status(400).json({ success: false, error: '用户名和密码不能为空' });
+      return;
+    }
+
+    if (password.length < 6) {
+      res.status(400).json({ success: false, error: '密码长度不能少于6位' });
+      return;
+    }
+
+    if (role !== 'system_admin' && role !== 'ops_admin') {
+      res.status(400).json({ success: false, error: '无效的角色' });
+      return;
+    }
+
+    const existingUser = await userRepository.findByUsername(username);
+    if (existingUser) {
+      res.status(400).json({ success: false, error: '用户名已存在' });
+      return;
+    }
+
+    await userRepository.create(username, password, role);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || '创建用户失败' });
+  }
+});
+
 // PUT /api/users/:id
 router.put('/:id', async (req: Request, res: Response) => {
   const auth = req.headers['authorization'] || '';
@@ -138,12 +185,38 @@ router.put('/:id', async (req: Request, res: Response) => {
 
   try {
     const user = await getCurrentUser(token);
-    if (!user || user.role !== 'admin') {
+    if (!user || user.role !== 'system_admin') {
       res.status(403).json({ success: false, error: '权限不足' });
       return;
     }
 
     const { role, is_frozen } = req.body;
+    const allUsers = await userRepository.getAll();
+
+    if (role !== undefined && role !== 'system_admin' && role !== 'ops_admin') {
+      res.status(400).json({ success: false, error: '无效的角色' });
+      return;
+    }
+
+    const targetUser = allUsers.find(u => u.id === req.params.id);
+    if (!targetUser) {
+      res.status(404).json({ success: false, error: '用户不存在' });
+      return;
+    }
+
+    const systemAdmins = allUsers.filter(u => u.role === 'system_admin');
+    const activeUsers = allUsers.filter(u => !u.is_frozen);
+
+    if (role === 'ops_admin' && systemAdmins.length <= 1 && targetUser.role === 'system_admin') {
+      res.status(400).json({ success: false, error: '至少保留一个系统管理员' });
+      return;
+    }
+
+    if (is_frozen === true && activeUsers.length <= 1 && !targetUser.is_frozen) {
+      res.status(400).json({ success: false, error: '至少保留一个活跃用户' });
+      return;
+    }
+
     const updateData: any = {};
     if (role !== undefined) updateData.role = role;
     if (is_frozen !== undefined) updateData.is_frozen = Boolean(is_frozen);
