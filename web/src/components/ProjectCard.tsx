@@ -13,7 +13,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onDeploy, onBackup }
   const navigate = useNavigate();
 
   return (
-    <div className="relative bg-bg-secondary border border-border rounded-xl p-5 card-hover transition-all duration-300 group">
+    <div className="relative bg-bg-secondary border border-border rounded-xl p-5 card-hover transition-all duration-300 group flex flex-col min-h-48 md:min-h-60">
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -33,33 +33,36 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onDeploy, onBackup }
         </div>
       </div>
 
-      {/* Server list */}
-      <div className="space-y-1.5 mb-4">
-        {project.server.map((srv) => (
-          <div key={srv} className="flex items-center gap-2 text-xs">
-            <Server size={12} className="text-text-secondary flex-shrink-0" />
-            <span className="text-text-muted font-mono">{srv}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Ports */}
-      {project.bindPorts.length > 0 && (
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <Globe size={12} className="text-text-secondary" />
-          {project.bindPorts.map((port) => (
-            <span
-              key={port}
-              className="px-1.5 py-0.5 rounded text-[11px] font-mono bg-primary-cyan/10 text-primary-cyan border border-primary-cyan/20"
-            >
-              :{port}
-            </span>
+      {/* Body area (servers/ports) with flexible height to keep footer aligned */}
+      <div className="flex-1 overflow-auto mb-4">
+        {/* Server list */}
+        <div className="space-y-1.5 mb-4">
+          {project.server.map((srv) => (
+            <div key={srv} className="flex items-center gap-2 text-xs">
+              <Server size={12} className="text-text-secondary flex-shrink-0" />
+              <span className="text-text-muted font-mono">{srv}</span>
+            </div>
           ))}
         </div>
-      )}
+
+        {/* Ports */}
+        {project.bindPorts.length > 0 && (
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <Globe size={12} className="text-text-secondary" />
+            {project.bindPorts.map((port) => (
+              <span
+                key={port}
+                className="px-1.5 py-0.5 rounded text-[11px] font-mono bg-primary-cyan/10 text-primary-cyan border border-primary-cyan/20"
+              >
+                :{port}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Actions */}
-      <div className="flex gap-2 pt-3 border-t border-border">
+      <div className="mt-auto flex gap-2 pt-3 border-t border-border">
         <button
           onClick={() => { onBackup?.(); navigate('/backup', { state: { project: project.name } }); }}
           className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium bg-bg-tertiary hover:bg-border text-text-muted border border-border hover:border-border/80 transition-all duration-200"
