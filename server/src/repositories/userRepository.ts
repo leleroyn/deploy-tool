@@ -9,6 +9,7 @@ export interface User {
   role: string;
   is_frozen: boolean;
   avatar?: string;
+  otp_secret?: string | null;
   created_at: string;
 }
 
@@ -73,8 +74,13 @@ export class UserRepository {
   }
 
   async getAll(): Promise<User[]> {
-    const users = db.prepare('SELECT id, username, role, is_frozen, avatar, created_at FROM users').all() as User[];
-    return users.map(u => ({ ...u, is_frozen: Boolean(u.is_frozen) }));
+    const users = db.prepare('SELECT id, username, role, is_frozen, avatar, otp_secret, created_at FROM users').all() as User[];
+    return users.map(u => ({
+      ...u,
+      is_frozen: Boolean(u.is_frozen),
+      hasOtp: !!u.otp_secret,
+      otp_secret: undefined
+    }));
   }
 }
 

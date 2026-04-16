@@ -28,6 +28,13 @@ export function initDb() {
     // Column may already exist, ignore error
   }
 
+  // Add otp_secret column if not exists (for existing databases)
+  try {
+    db.exec("ALTER TABLE users ADD COLUMN otp_secret TEXT");
+  } catch {
+    // Column may already exist, ignore error
+  }
+
   // Create sessions table
   db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (

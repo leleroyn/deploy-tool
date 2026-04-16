@@ -37,7 +37,9 @@ Deploy Tool 为一套完整的 **Web 管理平台**，核心理念是：
 | ⚙️ **在线配置编辑**      | 通过 Web 设置页直接编辑 `config.toml`，无需登录服务器                           |
 | 🐳 **Docker 一键部署** | 多阶段 Dockerfile 构建，单容器单端口，开箱即用                                  |
 | 🔑 **JWT 认证**      | 密码通过环境变量配置，无状态 JWT token 认证                                    |
-| 👤 **用户管理**        | 头像上传、密码修改、管理员可管理用户角色与账户状态（冻结/解冻）                               |
+| 🔐 **双因素认证**      | 运维管理员强制启用 TOTP 双因素认证（Google Authenticator 等）                      |
+| ⏰ **Session 管理**   | 关闭浏览器自动失效，最大 24 小时有效期                                            |
+| 👤 **用户管理**        | 头像上传、密码修改、管理员可管理用户角色、账户状态（冻结/解冻）、OTP 重置                       |
 | 📋 **日志历史**        | 任务记录与脚本日志统一展示，支持按类型筛选查看                                        |
 
 ---
@@ -254,14 +256,50 @@ cd web && npm install && npm run dev      # 端口 5173
 
 ### 环境变量
 
-| 变量名               | 说明                           |
-| ----------------- | ---------------------------- |
-| `DEPLOY_PASSWORD` | 登录密码（必填）                     |
-| `PORT`            | 后端服务端口，默认 `3001`             |
-| `SCRIPT_DIR`      | 脚本目录，默认 `/app/script`        |
-| `CONFIG_FILE`     | 配置文件路径，默认 `/app/config.toml` |
-| `LOG_BASE_DIR`    | 日志目录，默认 `/app/logs`          |
-| `SKIP_SSH_INIT`   | 跳过脚本内 ssh-agent 初始化，设为 `1`   |
+| 变量名                  | 说明                            |
+| -------------------- | ----------------------------- |
+| `DEPLOY_PASSWORD`    | 登录密码（必填）                      |
+| `PORT`               | 后端服务端口，默认 `3001`              |
+| `SCRIPT_DIR`         | 脚本目录，默认 `/app/script`         |
+| `CONFIG_FILE`        | 配置文件路径，默认 `/app/config.toml`  |
+| `LOG_BASE_DIR`       | 日志目录，默认 `/app/logs`           |
+| `SKIP_SSH_INIT`      | 跳过脚本内 ssh-agent 初始化，设为 `1`    |
+| `OTP_ENCRYPTION_KEY`  | TOTP 密钥加密密钥（64位十六进制字符串）      |
+
+### 双因素认证（TOTP）
+
+运维管理员（`ops_admin`）登录时必须使用双因素认证：
+
+**首次使用：**
+
+1. 运维管理员首次登录后，会提示绑定双因素认证
+2. 使用 Google Authenticator、Microsoft Authenticator 等 TOTP 应用扫描二维码
+3. 输入应用显示的 6 位验证码完成绑定
+
+**日常使用：**
+
+1. 输入用户名和密码后，还需要输入 TOTP 验证码
+
+**系统管理员（`system_admin`）不受此限制**，可以直接登录。
+
+**恢复方式：**
+
+如果运维管理员无法获取验证码（如手机丢失），系统管理员可以在用户管理页面重置该用户的双因素认证。
+
+**生成 OTP_ENCRYPTION_KEY：**
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Docker 部署时添加该环境变量：
+
+```bash
+docker run -d \
+  --name deploy-tool \
+  -e OTP_ENCRYPTION_KEY=your-generated-key \
+  ...
+```
 
 ---
 

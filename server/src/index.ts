@@ -1,7 +1,9 @@
+import path from 'path';
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
-import path from 'path';
+import dotenv from 'dotenv';
+import { initDb } from './db';
 import { setupWebSocket } from './ws/wsHandler';
 import { authMiddleware } from './auth';
 import authRouter from './routes/auth';
@@ -12,10 +14,21 @@ import logsRouter from './routes/logs';
 import sshRouter from './routes/ssh';
 import deployRouter from './routes/deploy';
 import commandsRouter from './routes/commands';
-import { initDb } from './db';
+
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+if (!process.env.OTP_ENCRYPTION_KEY) {
+  console.warn('[Warning] OTP_ENCRYPTION_KEY not set. OTP features will fail. Generate with:');
+  console.warn('  node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+}
+
+if (process.env.OTP_ENCRYPTION_KEY && process.env.OTP_ENCRYPTION_KEY.length !== 64) {
+  console.error('[Error] OTP_ENCRYPTION_KEY must be 64 hex characters (32 bytes).');
+  process.exit(1);
+}
 
 // Initialize Database
 try {
@@ -90,4 +103,3 @@ process.on('unhandledRejection', (reason) => {
 });
 
 export default app;
-

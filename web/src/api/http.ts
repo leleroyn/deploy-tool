@@ -2,19 +2,19 @@ import { ApiResponse, Project, SSHConfig, Task, LogFileMeta, PreflightData, Grou
 
 const BASE = '/api';
 
-/** 从 localStorage 读取 token */
+/** 从 sessionStorage 读取 token */
 export function getToken(): string {
-  return localStorage.getItem('deploy_token') || '';
+  return sessionStorage.getItem('deploy_token') || '';
 }
 
 /** 保存 token */
 export function setToken(token: string): void {
-  localStorage.setItem('deploy_token', token);
+  sessionStorage.setItem('deploy_token', token);
 }
 
 /** 清除 token */
 export function clearToken(): void {
-  localStorage.removeItem('deploy_token');
+  sessionStorage.removeItem('deploy_token');
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
@@ -34,7 +34,15 @@ async function request<T>(url: string, options?: RequestInit): Promise<ApiRespon
 export const api = {
   // 认证
   login: (username: string, password: string) =>
-    request<{ token: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+    request<{ token?: string; requireOtpSetup?: boolean; requireOtpVerify?: boolean; tempToken?: string }>(
+      '/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }
+    ),
+  otpSetup: (tempToken: string) =>
+    request<{ qrCode?: string; tempToken?: string }>('/auth/otp/setup', { method: 'POST', body: JSON.stringify({ tempToken }) }),
+  otpVerify: (tempToken: string, code: string) =>
+    request<{ token: string }>('/auth/otp/verify', { method: 'POST', body: JSON.stringify({ tempToken, code }) }),
+  otpVerifyLogin: (tempToken: string, code: string) =>
+    request<{ token: string }>('/auth/otp/verify-login', { method: 'POST', body: JSON.stringify({ tempToken, code }) }),
   logout: () =>
     request('/auth/logout', { method: 'POST' }),
   me: () =>
@@ -48,6 +56,8 @@ export const api = {
     request<any>('/users', { method: 'POST', body: JSON.stringify(data) }),
   updateUser: (id: string, data: any) =>
     request<any>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  resetUserOtp: (id: string) =>
+    request<any>(`/users/${id}/reset-otp`, { method: 'POST' }),
 
 
   // 项目

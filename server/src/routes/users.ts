@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getCurrentUser, changePassword } from '../auth';
 import { userRepository } from '../repositories/userRepository';
+import { sessionRepository } from '../repositories/sessionRepository';
 
 const router = Router();
 
@@ -225,6 +226,40 @@ router.put('/:id', async (req: Request, res: Response) => {
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message || '更新用户失败' });
+  }
+});
+
+router.post('/:id/reset-otp', async (req: Request, res: Response) => {
+  const auth = req.headers['authorization'] || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+
+  if (!token) {
+    res.status(401).json({ success: false, error: '未登录' });
+    return;
+  }
+
+  try {
+    const currentUser = await getCurrentUser(token);
+    if (!currentUser || currentUser.role !== 'system_admin') {
+      res.status(403).json({ success: false, error: '权限不足，只有系统管理员可以重置OTP' });
+      return;
+    }
+
+    const targetUserId = req.params.id;
+    const targetUser = await userRepository.findById(targetUserId);
+    if (!targetUser) {
+      res.status(404).json({ success: false, error: '目标用户不存在' });
+      return;
+    }
+
+    await userRepository.update(targetUserId, { otp_secret: null });
+    await sessionRepository.deleteByUserId(targetUserId);
+
+    console.log(`[OTP Reset] Admin ${currentUser.id} reset OTP for user ${targetUserId} at ${new Date().toISOString()}`);
+
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || '重置OTP失败' });
   }
 });
 

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { randomBytes } from 'crypto';
 import { userRepository } from './repositories/userRepository';
-import { sessionRepository } from './repositories/sessionRepository';
+import { sessionRepository, Session } from './repositories/sessionRepository';
 import bcrypt from 'bcryptjs';
 
 export function generateToken(): string {
@@ -31,6 +31,11 @@ export async function verifyToken(token: string): Promise<boolean> {
   return !!session;
 }
 
+export async function verifyTokenWithSession(token: string): Promise<Session | null> {
+  if (!token) return null;
+  return await sessionRepository.findByToken(token);
+}
+
 export async function getCurrentUser(token: string) {
   const session = await sessionRepository.findByToken(token);
   if (!session) return null;
@@ -51,17 +56,24 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
   const auth = req.headers['authorization'] || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
   try {
-    const isValid = await verifyToken(token);
-    if (!isValid) {
-      res.status(401).json({ success: false, error: '未登录或登录已过期' });
+    const session = await verifyTokenWithSession(token);
+    if (!session) {
+      res.status(401).json({ success: false, error: '登录已过期，请重新登录' });
       return;
     }
-    next();
-  } catch (err: any) {
-    if (err.message === 'ACCOUNT_FROZEN') {
+    const user = await userRepository.findById(session.user_id);
+    if (!user) {
+      res.status(401).json({ success: false, error: '用户不存在' });
+      return;
+    }
+    if (user.is_frozen) {
       res.status(403).json({ success: false, error: '账号已被冻结' });
       return;
     }
+    (req as any).user = user;
+    (req as any).session = session;
+    next();
+  } catch (err: any) {
     res.status(500).json({ success: false, error: '认证过程中出错' });
   }
 }

@@ -8,6 +8,16 @@ const roleLabels: Record<string, { label: string; canManageUsers: boolean }> = {
   ops_admin: { label: '运维管理员', canManageUsers: false },
 };
 
+interface UserWithOtp {
+  id: string;
+  username: string;
+  role: string;
+  is_frozen: boolean;
+  avatar?: string;
+  hasOtp?: boolean;
+  created_at: string;
+}
+
 const UserManagementPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'profile' | 'admin'>('profile');
   const [loading, setLoading] = useState(false);
@@ -34,9 +44,11 @@ const UserManagementPage: React.FC = () => {
     }
   }, [user]);
 
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserWithOtp[]>([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [resetOtpTarget, setResetOtpTarget] = useState<UserWithOtp | null>(null);
+  const [resetConfirmLoading, setResetConfirmLoading] = useState(false);
   const [createData, setCreateData] = useState({
     username: '',
     password: '',
@@ -54,7 +66,7 @@ const UserManagementPage: React.FC = () => {
     setAdminLoading(true);
     try {
       const res = await api.getUsers();
-      if (res.success) {
+      if (res.success && res.data) {
         setUsers(res.data);
       } else {
         setMessage(res.error || '获取用户列表失败');
@@ -153,6 +165,31 @@ const UserManagementPage: React.FC = () => {
     } catch {
       setMessage('请求失败');
       setMsgType('error');
+    }
+  };
+
+  const handleResetOtp = async (targetUser: UserWithOtp) => {
+    if (!confirm(`确定要重置用户 "${targetUser.username}" 的双因素认证吗？\n该用户下次登录时需要重新绑定。`)) {
+      return;
+    }
+    setResetConfirmLoading(true);
+    try {
+      const res = await api.resetUserOtp(targetUser.id);
+      if (res.success) {
+        fetchUsers();
+        setMessage(`已重置 ${targetUser.username} 的双因素认证`);
+        setMsgType('success');
+        setTimeout(() => setMessage(''), 3000);
+      } else {
+        setMessage(res.error || '重置失败');
+        setMsgType('error');
+      }
+    } catch {
+      setMessage('请求失败');
+      setMsgType('error');
+    } finally {
+      setResetConfirmLoading(false);
+      setResetOtpTarget(null);
     }
   };
 
@@ -402,10 +439,11 @@ const UserManagementPage: React.FC = () => {
 
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead>
+                  <thead>
                 <tr className="text-xs text-text-secondary border-b border-border">
                   <th className="text-left py-3 px-2 font-medium">用户</th>
                   <th className="text-left py-3 px-2 font-medium">角色</th>
+                  <th className="text-left py-3 px-2 font-medium">双因素</th>
                   <th className="text-left py-3 px-2 font-medium">状态</th>
                   <th className="text-right py-3 px-2 font-medium">操作</th>
                 </tr>
@@ -439,6 +477,15 @@ const UserManagementPage: React.FC = () => {
                       }`}>
                         {roleLabels[u.role]?.label || u.role.toUpperCase()}
                       </span>
+                    </td>
+                    <td className="py-3 px-2">
+                      {u.role === 'ops_admin' ? (
+                        <span className={`text-xs ${u.hasOtp ? 'text-status-success' : 'text-orange-500'}`}>
+                          {u.hasOtp ? '已绑定' : '未绑定'}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-text-secondary">-</span>
+                      )}
                     </td>
                     <td className="py-3 px-2">
                       {u.is_frozen ? (
@@ -480,6 +527,16 @@ const UserManagementPage: React.FC = () => {
                         >
                           {u.is_frozen ? '解冻' : '冻结'}
                         </button>
+                        {u.role === 'ops_admin' && (
+                          <button
+                            onClick={() => handleResetOtp(u)}
+                            disabled={resetConfirmLoading}
+                            className="px-2 py-1 text-xs text-orange-500 hover:bg-orange-50 rounded transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="重置双因素认证"
+                          >
+                            重置OTP
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

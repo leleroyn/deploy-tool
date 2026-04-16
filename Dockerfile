@@ -83,6 +83,7 @@ EXPOSE 3001
 ENV NODE_ENV=production \
     SCRIPT_DIR=/app/script \
     CONFIG_FILE=/app/config.toml \
-    LOG_BASE_DIR=/app/logs
+    LOG_BASE_DIR=/app/logs \
+    OTP_ENCRYPTION_KEY=69d30edf0e812bf7741709c2fa32ae60eab006a153d6421303a6996d9fe6a7bd
 
 CMD ["node", "dist/index.js"]
