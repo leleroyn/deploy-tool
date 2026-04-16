@@ -1,0 +1,158 @@
+import { Router, Request, Response } from 'express';
+import { getCurrentUser, changePassword } from '../auth';
+import { userRepository } from '../repositories/userRepository';
+
+const router = Router();
+
+// GET /api/users/
+router.get('/', async (req: Request, res: Response) => {
+  const auth = req.headers['authorization'] || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+
+  if (!token) {
+    res.status(401).json({ success: false, error: '未登录' });
+    return;
+  }
+
+  try {
+    const user = await getCurrentUser(token);
+    if (!user) {
+      res.status(401).json({ success: false, error: '无效的会话' });
+      return;
+    }
+
+    if (user.role !== 'admin') {
+      res.status(403).json({ success: false, error: '权限不足' });
+      return;
+    }
+
+    const users = await userRepository.getAll();
+    // 隐藏敏感信息
+    const sanitizedUsers = users.map(u => {
+      const { password_hash, ...uWithoutHash } = u;
+      return uWithoutHash;
+    });
+
+    res.json({ success: true, data: sanitizedUsers });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || '获取用户列表失败' });
+  }
+});
+
+// GET /api/users/me
+router.get('/me', async (req: Request, res: Response) => {
+  const auth = req.headers['authorization'] || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  
+  if (!token) {
+    res.status(401).json({ success: false, error: '未登录' });
+    return;
+  }
+
+  const user = await getCurrentUser(token);
+  if (!user) {
+    res.status(401).json({ success: false, error: '无效的会话' });
+    return;
+  }
+
+  const { password_hash, ...userWithoutHash } = user;
+  res.json({ success: true, data: userWithoutHash });
+});
+
+// PUT /api/users/me
+router.put('/me', async (req: Request, res: Response) => {
+  const auth = req.headers['authorization'] || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  
+  if (!token) {
+    res.status(401).json({ success: false, error: '未登录' });
+    return;
+  }
+
+  try {
+    const user = await getCurrentUser(token);
+    if (!user) {
+      res.status(401).json({ success: false, error: '无效的会话' });
+      return;
+    }
+
+    const { avatar, password } = req.body;
+    const { userRepository } = await import('../repositories/userRepository');
+    await userRepository.updateProfile(user.id, { avatar, password });
+    
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || '更新个人资料失败' });
+  }
+});
+
+// POST /api/users/change-password
+router.post('/change-password', async (req: Request, res: Response) => {
+  const auth = req.headers['authorization'] || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  
+  if (!token) {
+    res.status(401).json({ success: false, error: '未登录' });
+    return;
+  }
+
+  const { currentPassword, newPassword } = req.body as { currentPassword: string; newPassword: string };
+  
+  try {
+    const { sessionRepository } = await import('../repositories/sessionRepository');
+    const session = await sessionRepository.findByToken(token);
+    if (!session) {
+      res.status(401).json({ success: false, error: '无效的会话' });
+      return;
+    }
+
+    const { userRepository } = await import('../repositories/userRepository');
+    const user = await userRepository.findById(session.user_id);
+    if (!user) {
+      res.status(404).json({ success: false, error: '用户不存在' });
+      return;
+    }
+
+    await changePassword(user.id, currentPassword, newPassword);
+    res.json({ success: true });
+  } catch (err: any) {
+    if (err.message === 'INVALID_CURRENT_PASSWORD') {
+      res.status(400).json({ success: false, error: '当前密码错误' });
+    } else if (err.message === 'PASSWORD_TOO_SHORT') {
+      res.status(400).json({ success: false, error: '新密码长度不能少于6位' });
+    } else {
+      res.status(500).json({ success: false, error: '修改密码过程中出错' });
+    }
+  }
+});
+
+// PUT /api/users/:id
+router.put('/:id', async (req: Request, res: Response) => {
+  const auth = req.headers['authorization'] || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+
+  if (!token) {
+    res.status(401).json({ success: false, error: '未登录' });
+    return;
+  }
+
+  try {
+    const user = await getCurrentUser(token);
+    if (!user || user.role !== 'admin') {
+      res.status(403).json({ success: false, error: '权限不足' });
+      return;
+    }
+
+    const { role, is_frozen } = req.body;
+    const updateData: any = {};
+    if (role !== undefined) updateData.role = role;
+    if (is_frozen !== undefined) updateData.is_frozen = Boolean(is_frozen);
+
+    await userRepository.update(req.params.id, updateData);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || '更新用户失败' });
+  }
+});
+
+export default router;

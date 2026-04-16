@@ -9,22 +9,39 @@ import RemoteMaintenancePage from './pages/RemoteMaintenancePage';
 import LogsPage from './pages/LogsPage';
 import SettingsPage from './pages/SettingsPage';
 import LoginPage from './pages/LoginPage';
+import UserManagementPage from './pages/UserManagementPage';
 import { useAppStore } from './store/appStore';
-import { getToken, clearToken } from './api/http';
+import { getToken, clearToken, api } from './api/http';
 
 function App() {
   const checkHealth = useAppStore((s) => s.checkHealth);
+  const setUser = useAppStore((s) => s.setUser);
   const [authed, setAuthed] = useState(() => !!getToken());
 
   useEffect(() => {
     if (!authed) return;
-    // 启动时校验 token 是否仍有效
-    checkHealth().then((ok) => {
-      // health 不需要认证，但如果 API 调用返回 401 则退出
-    });
+    
+    // 启动时校验 token 是否仍有效，并获取用户信息
+    const initAuth = async () => {
+      try {
+        const res = await api.me();
+        if (res.success) {
+          setUser(res.data);
+        } else {
+          clearToken();
+          setAuthed(false);
+        }
+      } catch {
+        clearToken();
+        setAuthed(false);
+      }
+    };
+
+    initAuth();
+    
     const interval = setInterval(checkHealth, 30000);
     return () => clearInterval(interval);
-  }, [authed]);
+  }, [authed, setUser, checkHealth]);
 
   // 监听 401 响应，自动退出登录
   useEffect(() => {
@@ -60,6 +77,7 @@ function App() {
           <Route path="/remote" element={<RemoteMaintenancePage />} />
           <Route path="/logs" element={<LogsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/users" element={<UserManagementPage />} />
         </Routes>
       </Layout>
     </BrowserRouter>

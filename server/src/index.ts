@@ -5,18 +5,29 @@ import path from 'path';
 import { setupWebSocket } from './ws/wsHandler';
 import { authMiddleware } from './auth';
 import authRouter from './routes/auth';
+import usersRouter from './routes/users';
 import projectsRouter from './routes/projects';
 import tasksRouter from './routes/tasks';
 import logsRouter from './routes/logs';
 import sshRouter from './routes/ssh';
 import deployRouter from './routes/deploy';
 import commandsRouter from './routes/commands';
+import { initDb } from './db';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Initialize Database
+try {
+  initDb();
+  console.log('[Server] Database initialized.');
+} catch (err) {
+  console.error('[Server] Database initialization failed:', err);
+  process.exit(1);
+}
+
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // 请求日志（过滤敏感字段）
 app.use((req, _res, next) => {
@@ -38,6 +49,7 @@ app.get('/api/health', (_req, res) => {
 
 // 登录/登出（不需要登录）
 app.use('/api/auth', authRouter);
+app.use('/api/users', authMiddleware, usersRouter);
 
 // 以下路由需要登录
 app.use('/api/projects', authMiddleware, projectsRouter);

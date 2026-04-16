@@ -7,10 +7,12 @@ interface AppState {
   tasks: Task[];
   sshConfig: SSHConfig | null;
   serverOnline: boolean;
+  user: any | null;
   loadProjects: () => Promise<void>;
   loadTasks: () => Promise<void>;
   loadSSHConfig: () => Promise<void>;
   checkHealth: () => Promise<void>;
+  setUser: (user: any | null) => void;
   updateTask: (task: Task) => void;
 }
 
@@ -19,6 +21,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   tasks: [],
   sshConfig: null,
   serverOnline: false,
+  user: null,
 
   loadProjects: async () => {
     const res = await api.getProjects();
@@ -49,6 +52,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ serverOnline: false });
     }
   },
+
+  setUser: (user) => set({ user }),
 
   updateTask: (task: Task) => {
     const { tasks } = get();

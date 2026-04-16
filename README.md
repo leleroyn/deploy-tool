@@ -37,6 +37,7 @@ Deploy Tool 为一套完整的 **Web 管理平台**，核心理念是：
 | ⚙️ **在线配置编辑**      | 通过 Web 设置页直接编辑 `config.toml`，无需登录服务器                           |
 | 🐳 **Docker 一键部署** | 多阶段 Dockerfile 构建，单容器单端口，开箱即用                                  |
 | 🔑 **JWT 认证**      | 密码通过环境变量配置，无状态 JWT token 认证                                    |
+| 👤 **用户管理**        | 头像上传、密码修改、管理员可管理用户角色与账户状态（冻结/解冻）                               |
 | 📋 **日志历史**        | 任务记录与脚本日志统一展示，支持按类型筛选查看                                        |
 
 ---
@@ -111,6 +112,7 @@ Deploy Tool 为一套完整的 **Web 管理平台**，核心理念是：
 | 端口检测 | 检测项目配置的端口是否在远程服务器上监听，按服务器分组展示        |
 | 远程维护 | 分组管理运维命令，支持二次确认执行、执行记录、实时输出          |
 | 日志历史 | 任务记录表格 + 脚本日志文件查看（部署/备份/检测/远程维护/SSH） |
+| 用户管理 | 个人资料管理（头像、密码）、管理员可管理用户角色与账户状态        |
 | 系统设置 | 在线编辑 config.toml、SSH 配置管理            |
 
 ### 部署流程
@@ -197,7 +199,7 @@ docker run -d \
   --restart unless-stopped \
   -p 3001:3001 \
   -u root \
-  -e DEPLOY_PASSWORD=你的密码 \ 
+  -e DEPLOY_PASSWORD=默认密码 \ 
   -e SKIP_SSH_INIT=1 \
   -v "$(pwd)/config.toml:/app/config.toml" \
   -v "$(pwd)/script:/app/script:ro" \
@@ -278,6 +280,7 @@ deploy-tool/
 │   │   ├── config/           # 配置管理（TOML 读写）
 │   │   ├── routes/           # API 路由
 │   │   │   ├── auth.ts       # 认证
+│   │   │   ├── users.ts      # 用户管理
 │   │   │   ├── projects.ts   # 项目管理
 │   │   │   ├── tasks.ts      # 任务创建
 │   │   │   ├── deploy.ts     # 部署/上传
@@ -299,6 +302,7 @@ deploy-tool/
 │   │   │   ├── PortCheckPage.tsx
 │   │   │   ├── RemoteMaintenancePage.tsx
 │   │   │   ├── LogsPage.tsx
+│   │   │   ├── UserManagementPage.tsx
 │   │   │   └── SettingsPage.tsx
 │   │   ├── components/       # 通用组件
 │   │   ├── api/              # API 客户端
@@ -318,3 +322,5 @@ deploy-tool/
 <div align="center">
   <sub>如有问题请提 <a href="https://github.com/your-username/deploy-tool/issues">Issue</a></sub>
 </div>
+
+

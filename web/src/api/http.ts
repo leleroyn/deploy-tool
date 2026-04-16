@@ -1,4 +1,4 @@
-import { ApiResponse, Project, SSHConfig, Task, LogFileMeta, PreflightData, GroupedCommands, CommandExecResult, CommandHistory } from '../types';
+import { ApiResponse, Project, SSHConfig, Task, LogFileMeta, PreflightData, GroupedCommands, CommandHistory } from '../types';
 
 const BASE = '/api';
 
@@ -33,10 +33,20 @@ async function request<T>(url: string, options?: RequestInit): Promise<ApiRespon
 
 export const api = {
   // 认证
-  login: (password: string) =>
-    request<{ token: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ password }) }),
+  login: (username: string, password: string) =>
+    request<{ token: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
   logout: () =>
     request('/auth/logout', { method: 'POST' }),
+  me: () =>
+    request<any>('/auth/me'),
+  updateMe: (data: { avatar?: string; password?: string }) =>
+    request<any>('/users/me', { method: 'PUT', body: JSON.stringify(data) }),
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    request<any>('/users/change-password', { method: 'POST', body: JSON.stringify(data) }),
+  getUsers: () => request<any[]>('/users'),
+  updateUser: (id: string, data: any) =>
+    request<any>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
 
   // 项目
   getProjects: () => request<Project[]>('/projects'),
