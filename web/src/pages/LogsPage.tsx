@@ -20,7 +20,7 @@ const logTypeMap: Record<string, string> = {
 };
 
 const LogsPage: React.FC = () => {
-  const { tasks, loadTasks } = useAppStore();
+  const { tasks, loadTasks, user } = useAppStore();
   const [logFiles, setLogFiles] = useState<LogFileMeta[]>([]);
   const [activeLog, setActiveLog] = useState<string | null>(null);
   const [logContent, setLogContent] = useState('');
@@ -28,10 +28,13 @@ const LogsPage: React.FC = () => {
   // 内联确认：存待删除的 key，避免 iframe 中 window.confirm 被拦截
   const [confirmKey, setConfirmKey] = useState<string | null>(null);
 
+  const isSystemAdmin = user?.role === 'system_admin';
+
   useEffect(() => {
     loadTasks();
     loadLogFiles();
   }, []);
+
 
   const loadLogFiles = async () => {
     const res = await api.getLogFiles();
@@ -136,22 +139,25 @@ const LogsPage: React.FC = () => {
                   <FileText size={14} className="text-text-secondary" />
                   <span className="text-sm font-medium text-text-primary">{logTypeMap[file.key]}</span>
                 </div>
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={() => handleViewLog(file.key)}
-                    className="p-1 rounded text-text-secondary hover:text-primary-light hover:bg-primary/10 transition-all"
-                    title="查看"
-                  >
-                    <Download size={13} />
-                  </button>
-                  <button
-                    onClick={() => setConfirmKey(file.key)}
-                    className="p-1 rounded text-text-secondary hover:text-status-error hover:bg-status-error/10 transition-all"
-                    title="清空日志内容"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => handleViewLog(file.key)}
+                      className="p-1 rounded text-text-secondary hover:text-primary-light hover:bg-primary/10 transition-all"
+                      title="查看"
+                    >
+                      <Download size={13} />
+                    </button>
+                    {isSystemAdmin && (
+                      <button
+                        onClick={() => setConfirmKey(file.key)}
+                        className="p-1 rounded text-text-secondary hover:text-status-error hover:bg-status-error/10 transition-all"
+                        title="清空日志内容"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+
               </div>
               <p className="text-xs font-mono text-text-secondary">{file.filename}</p>
               <div className="flex items-center justify-between mt-2 text-[11px] text-text-secondary">

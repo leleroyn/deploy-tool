@@ -14,6 +14,7 @@ const RemoteMaintenancePage: React.FC = () => {
   const [confirmKey, setConfirmKey] = useState<string | null>(null);
   const [historyMap, setHistoryMap] = useState<CommandHistoryMap>({});
   const [runningTask, setRunningTask] = useState<Task | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [terminalOutput, setTerminalOutput] = useState('');
   const [showResults, setShowResults] = useState(false);
   const terminalRef = useRef<HTMLPreElement>(null);
@@ -56,47 +57,59 @@ const RemoteMaintenancePage: React.FC = () => {
   };
 
   const handleExecute = async (commandName: string) => {
+    if (isSubmitting || (runningTask !== null && runningTask.project !== commandName)) return;
+
     setConfirmKey(null);
+    setIsSubmitting(true);
     setTerminalOutput(`执行命令: ${commandName}\n`);
     setTerminalOutput(prev => prev + '─'.repeat(40) + '\n');
     setShowResults(true);
 
-    const res = await api.execCommand(commandName);
-    if (!res.success || !res.data) {
-      setTerminalOutput(prev => prev + `执行失败: ${res.error}\n`);
-      return;
-    }
-
-    const taskId = res.data.id;
-    setRunningTask(res.data);
-
-    if (wsCloseRef.current) wsCloseRef.current();
-    wsCloseRef.current = createTaskWs(taskId, (msg) => {
-      if (msg.type === 'log') {
-        setTerminalOutput(prev => prev + msg.data);
+    try {
+      const res = await api.execCommand(commandName);
+      if (!res.success || !res.data) {
+        setTerminalOutput(prev => prev + `执行失败: ${res.error}\n`);
+        setIsSubmitting(false);
+        return;
       }
-      if (msg.type === 'complete') {
-        const status = msg.data as TaskStatus;
-        setRunningTask(prev => prev ? { ...prev, status } : null);
-        setTerminalOutput(prev => prev + `\n\n命令${status === 'success' ? '执行成功' : '执行失败'}`);
-        // 延迟刷新历史，确保日志文件已写入
-        setTimeout(() => loadHistory(), 500);
-      }
-    });
 
-    // 方案 3: 超时兜底 (15秒)
-    setTimeout(async () => {
-      const checkRes = await api.getTask(taskId);
-      if (checkRes.success && checkRes.data) {
-        const status = checkRes.data.status;
-        // 如果任务已经结束了，但前端还在 loading
-        if (status === 'success' || status === 'failed') {
-          setRunningTask(prev => prev ? { ...prev, status } : null);
-          setTerminalOutput(prev => prev + `\n\n[超时轮询] 命令${status === 'success' ? '执行成功' : '执行失败'}`);
-          setTimeout(() => loadHistory(), 500);
+      const taskId = res.data.id;
+      setRunningTask(res.data);
+
+      if (wsCloseRef.current) wsCloseRef.current();
+      wsCloseRef.current = createTaskWs(taskId, (msg) => {
+        if (msg.type === 'log') {
+          setTerminalOutput(prev => prev + msg.data);
         }
-      }
-    }, 15000);
+        if (msg.type === 'complete' || msg.type === 'status') {
+          const status = msg.data as TaskStatus;
+          if (status === 'success' || status === 'failed') {
+            setRunningTask(prev => prev ? { ...prev, status } : null);
+            setTerminalOutput(prev => prev + `\n\n命令${status === 'success' ? '执行成功' : '执行失败'}`);
+            setTimeout(() => loadHistory(), 500);
+          }
+        }
+      });
+
+      // 方案 3: 超时兜底 (15秒)
+      setTimeout(async () => {
+        const checkRes = await api.getTask(taskId);
+        if (checkRes.success && checkRes.data) {
+          const status = checkRes.data.status;
+          if (status === 'success' || status === 'failed') {
+            setRunningTask(prev => prev ? { ...prev, status } : null);
+            setTerminalOutput(prev => prev + `\n\n[超时轮询] 命令${status === 'success' ? '执行成功' : '执行失败'}`);
+            setTimeout(() => loadHistory(), 500);
+          }
+        }
+      }, 15000);
+    } catch (err) {
+      console.error('Execute error:', err);
+      setTerminalOutput(prev => prev + `\n\n[错误] 请求执行失败\n`);
+      setRunningTask(null);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -171,18 +184,18 @@ const RemoteMaintenancePage: React.FC = () => {
                   <span className="text-xs text-text-tertiary">
                     服务器: {cmd.server.join(', ')}
                   </span>
-                  <button
-                    onClick={() => setConfirmKey(cmd.name)}
-                    disabled={runningTask !== null && runningTask.project !== cmd.name}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-all disabled:opacity-40"
-                  >
-                    {runningTask !== null && runningTask.project === cmd.name ? (
-                      <Loader2 size={12} className="animate-spin" />
-                    ) : (
-                      <Play size={12} />
-                    )}
-                    执行
-                  </button>
+                   <button
+                     onClick={() => setConfirmKey(cmd.name)}
+                     disabled={isSubmitting || (runningTask !== null && runningTask.project !== cmd.name)}
+                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-all disabled:opacity-40"
+                   >
+                     {(isSubmitting || (runningTask !== null && runningTask.project === cmd.name)) ? (
+                       <Loader2 size={12} className="animate-spin" />
+                     ) : (
+                       <Play size={12} />
+                     )}
+                     执行
+                   </button>
                 </div>
 
                 {/* 内联确认（参考日志历史） */}
