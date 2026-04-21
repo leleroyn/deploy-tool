@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -12,6 +12,23 @@ import LoginPage from './pages/LoginPage';
 import UserManagementPage from './pages/UserManagementPage';
 import { useAppStore } from './store/appStore';
 import { getToken, clearToken, api } from './api/http';
+
+const SettingsRouteGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const user = useAppStore((s) => s.user);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user && user.role !== 'system_admin') {
+      navigate('/');
+    }
+  }, [user]);
+
+  if (user?.role !== 'system_admin') {
+    return null;
+  }
+
+  return <>{children}</>;
+};
 
 function App() {
   const checkHealth = useAppStore((s) => s.checkHealth);
@@ -76,7 +93,11 @@ function App() {
           <Route path="/ports" element={<PortCheckPage />} />
           <Route path="/remote" element={<RemoteMaintenancePage />} />
           <Route path="/logs" element={<LogsPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings" element={
+            <SettingsRouteGuard>
+              <SettingsPage />
+            </SettingsRouteGuard>
+          } />
           <Route path="/users" element={<UserManagementPage />} />
         </Routes>
       </Layout>

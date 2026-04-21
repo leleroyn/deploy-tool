@@ -13,12 +13,14 @@ const RemoteMaintenancePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [confirmKey, setConfirmKey] = useState<string | null>(null);
   const [historyMap, setHistoryMap] = useState<CommandHistoryMap>({});
-  const [runningTask, setRunningTask] = useState<Task | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [terminalOutput, setTerminalOutput] = useState('');
-  const [showResults, setShowResults] = useState(false);
-  const terminalRef = useRef<HTMLPreElement>(null);
-  const wsCloseRef = useRef<(() => void) | null>(null);
+   const [runningTask, setRunningTask] = useState<Task | null>(null);
+   const [isSubmitting, setIsSubmitting] = useState(false);
+   const [isExecuting, setIsExecuting] = useState(false);
+   const [terminalOutput, setTerminalOutput] = useState('');
+   const [showResults, setShowResults] = useState(false);
+   const terminalRef = useRef<HTMLPreElement>(null);
+   const wsCloseRef = useRef<(() => void) | null>(null);
+
 
   useEffect(() => {
     loadCommands();
@@ -56,61 +58,77 @@ const RemoteMaintenancePage: React.FC = () => {
     }
   };
 
-  const handleExecute = async (commandName: string) => {
-    if (isSubmitting || (runningTask !== null && runningTask.project !== commandName)) return;
+   const handleExecute = async (commandName: string) => {
+     if (isSubmitting || (runningTask !== null && runningTask.project !== commandName)) return;
 
-    setConfirmKey(null);
-    setIsSubmitting(true);
-    setTerminalOutput(`执行命令: ${commandName}\n`);
-    setTerminalOutput(prev => prev + '─'.repeat(40) + '\n');
-    setShowResults(true);
+     setConfirmKey(null);
+     setIsSubmitting(true);
+     setIsExecuting(true);
+     setTerminalOutput(`执行命令: ${commandName}\n`);
+     setTerminalOutput(prev => prev + '─'.repeat(40) + '\n');
+     setShowResults(true);
 
-    try {
-      const res = await api.execCommand(commandName);
-      if (!res.success || !res.data) {
-        setTerminalOutput(prev => prev + `执行失败: ${res.error}\n`);
-        setIsSubmitting(false);
-        return;
-      }
+     try {
+       const res = await api.execCommand(commandName);
+       if (!res.success || !res.data) {
+         setTerminalOutput(prev => prev + `执行失败: ${res.error}\n`);
+         setIsSubmitting(false);
+         setIsExecuting(false);
+         return;
+       }
 
-      const taskId = res.data.id;
-      setRunningTask(res.data);
+       const taskId = res.data.id;
+       setRunningTask(res.data);
 
-      if (wsCloseRef.current) wsCloseRef.current();
-      wsCloseRef.current = createTaskWs(taskId, (msg) => {
-        if (msg.type === 'log') {
-          setTerminalOutput(prev => prev + msg.data);
-        }
-        if (msg.type === 'complete' || msg.type === 'status') {
-          const status = msg.data as TaskStatus;
-          if (status === 'success' || status === 'failed') {
-            setRunningTask(prev => prev ? { ...prev, status } : null);
-            setTerminalOutput(prev => prev + `\n\n命令${status === 'success' ? '执行成功' : '执行失败'}`);
-            setTimeout(() => loadHistory(), 500);
-          }
-        }
-      });
+       if (wsCloseRef.current) wsCloseRef.current();
+       wsCloseRef.current = createTaskWs(taskId, (msg) => {
+         if (msg.type === 'log') {
+           setTerminalOutput(prev => prev + msg.data);
+         }
+         if (msg.type === 'complete' || msg.type === 'status') {
+           const status = msg.data as TaskStatus;
+           if (status === 'success' || status === 'failed') {
+             setRunningTask(null);
+             setIsExecuting(false);
+             setTimeout(() => loadHistory(), 500);
+           }
+         }
+       });
 
-      // 方案 3: 超时兜底 (15秒)
-      setTimeout(async () => {
-        const checkRes = await api.getTask(taskId);
-        if (checkRes.success && checkRes.data) {
-          const status = checkRes.data.status;
-          if (status === 'success' || status === 'failed') {
-            setRunningTask(prev => prev ? { ...prev, status } : null);
-            setTerminalOutput(prev => prev + `\n\n[超时轮询] 命令${status === 'success' ? '执行成功' : '执行失败'}`);
-            setTimeout(() => loadHistory(), 500);
-          }
-        }
-      }, 15000);
-    } catch (err) {
-      console.error('Execute error:', err);
-      setTerminalOutput(prev => prev + `\n\n[错误] 请求执行失败\n`);
-      setRunningTask(null);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+       // 关键修复：立即同步当前状态，防止极速命令导致的信号丢失
+       const checkRes = await api.getTask(taskId);
+       if (checkRes.success && checkRes.data) {
+         const status = checkRes.data.status;
+         if (status === 'success' || status === 'failed') {
+           setRunningTask(null);
+           setIsExecuting(false);
+           setTimeout(() => loadHistory(), 500);
+         }
+       }
+
+       // 方案 3: 超时兜底 (15秒)
+       setTimeout(async () => {
+         const retryRes = await api.getTask(taskId);
+         if (retryRes.success && retryRes.data) {
+           const status = retryRes.data.status;
+           if (status === 'success' || status === 'failed') {
+             setRunningTask(null);
+             setIsExecuting(false);
+             setTimeout(() => loadHistory(), 500);
+           }
+         }
+       }, 15000);
+     } catch (err) {
+       console.error('Execute error:', err);
+       setTerminalOutput(prev => prev + `\n\n[错误] 请求执行失败\n`);
+       setRunningTask(null);
+       setIsExecuting(false);
+     } finally {
+       setIsSubmitting(false);
+     }
+   };
+
+
 
   if (loading) {
     return (
@@ -186,16 +204,18 @@ const RemoteMaintenancePage: React.FC = () => {
                   </span>
                    <button
                      onClick={() => setConfirmKey(cmd.name)}
-                     disabled={isSubmitting || (runningTask !== null && runningTask.project !== cmd.name)}
-                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-all disabled:opacity-40"
+                     disabled={isSubmitting || runningTask?.project === cmd.name}
+                     className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-all disabled:opacity-40"
                    >
-                     {(isSubmitting || (runningTask !== null && runningTask.project === cmd.name)) ? (
+                     {isSubmitting || runningTask?.project === cmd.name ? (
                        <Loader2 size={12} className="animate-spin" />
                      ) : (
                        <Play size={12} />
                      )}
                      执行
                    </button>
+
+
                 </div>
 
                 {/* 内联确认（参考日志历史） */}

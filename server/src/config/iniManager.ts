@@ -43,59 +43,9 @@ function readRaw(): RawConfig {
 }
 
 // 转义 TOML 字符串值中的特殊字符
-function escapeToml(str: string): string {
-  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
-}
-
 function writeRaw(data: RawConfig): void {
   try {
-    const lines: string[] = [];
-
-    if (data.ssh) {
-      lines.push('[ssh]');
-      if (data.ssh.user) lines.push(`user = "${escapeToml(data.ssh.user)}"`);
-      if (data.ssh.key) lines.push(`key = "${escapeToml(data.ssh.key)}"`);
-      lines.push('');
-    }
-
-    if (data.deploy) {
-      for (const [name, sec] of Object.entries(data.deploy)) {
-        lines.push(`[deploy.${name}]`);
-        if (sec.server && sec.server.length > 0) {
-          lines.push(`server = ${JSON.stringify(sec.server)}`);
-        }
-        if (sec.remote_dir) lines.push(`remote_dir = "${escapeToml(sec.remote_dir)}"`);
-        if (sec.backup_dir) lines.push(`backup_dir = "${escapeToml(sec.backup_dir)}"`);
-        if (sec.local_dir) lines.push(`local_dir = "${escapeToml(sec.local_dir)}"`);
-        if (sec.exclude && sec.exclude.length > 0) {
-          lines.push(`exclude = ${JSON.stringify(sec.exclude)}`);
-        }
-        if (sec.restart_cmd) lines.push(`restart_cmd = "${escapeToml(sec.restart_cmd)}"`);
-        if (sec['bind-port'] !== undefined) {
-          const ports = sec['bind-port'];
-          if (Array.isArray(ports)) {
-            lines.push(`bind-port = ${JSON.stringify(ports)}`);
-          } else {
-            lines.push(`bind-port = ${ports}`);
-          }
-        }
-        lines.push('');
-      }
-    }
-
-    if (data.command) {
-      for (const [name, sec] of Object.entries(data.command)) {
-        lines.push(`[command."${escapeToml(name)}"]`);
-        if (sec.server && sec.server.length > 0) {
-          lines.push(`server = ${JSON.stringify(sec.server)}`);
-        }
-        if (sec.command) lines.push(`command = "${escapeToml(sec.command)}"`);
-        if (sec.group) lines.push(`group = "${escapeToml(sec.group)}"`);
-        lines.push('');
-      }
-    }
-
-    fs.writeFileSync(CONFIG_FILE, lines.join('\n'), 'utf-8');
+    fs.writeFileSync(CONFIG_FILE, TOML.stringify(data as any), 'utf-8');
   } catch (err) {
     console.error('[Config] 写入配置失败:', CONFIG_FILE, err);
     throw err;

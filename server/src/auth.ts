@@ -77,3 +77,12 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
     res.status(500).json({ success: false, error: '认证过程中出错' });
   }
 }
+
+export async function requireSystemAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const user = (req as any).user;
+  if (!user || user.role !== 'system_admin') {
+    res.status(403).json({ success: false, error: '权限不足，需要系统管理员权限' });
+    return;
+  }
+  next();
+}

@@ -9,16 +9,21 @@ interface LayoutProps {
   onLogout?: () => void;
 }
 
-const navItems = [
-  { to: '/', icon: LayoutDashboard, label: '仪表盘' },
-  { to: '/backup', icon: Archive, label: '备份管理' },
-  { to: '/deploy', icon: Rocket, label: '部署管理' },
-  { to: '/ports', icon: Radio, label: '端口检测' },
-  { to: '/remote', icon: Terminal, label: '远程维护' },
-  { to: '/logs', icon: FileText, label: '日志历史' },
-  { to: '/users', icon: Users, label: '用户管理' },
-  { to: '/settings', icon: Settings, label: '系统设置' },
-];
+const getNavItems = (role: string) => {
+  const items = [
+    { to: '/', icon: LayoutDashboard, label: '仪表盘' },
+    { to: '/backup', icon: Archive, label: '备份管理' },
+    { to: '/deploy', icon: Rocket, label: '部署管理' },
+    { to: '/ports', icon: Radio, label: '端口检测' },
+    { to: '/remote', icon: Terminal, label: '远程维护' },
+    { to: '/logs', icon: FileText, label: '日志历史' },
+    { to: '/users', icon: Users, label: '用户管理' },
+  ];
+  if (role === 'system_admin') {
+    items.push({ to: '/settings', icon: Settings, label: '系统设置' });
+  }
+  return items;
+};
 
 const Layout: React.FC<LayoutProps> = ({ children, onLogout }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -26,6 +31,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onLogout }) => {
   const user = useAppStore((s) => s.user);
   const location = useLocation();
 
+  const navItems = getNavItems(user?.role || '');
   const currentPage = navItems.find(n => n.to === location.pathname)?.label || 'Deploy Tool';
 
   return (

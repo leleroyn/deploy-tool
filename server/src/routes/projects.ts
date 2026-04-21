@@ -1,9 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { getProjects, getProject, updateProject, addProject, deleteProject } from '../config/iniManager';
+import { requireSystemAdmin } from '../auth';
 
 const router = Router();
 
-// GET /api/projects
+// GET /api/projects - All authenticated users can read
 router.get('/', (_req: Request, res: Response) => {
   try {
     const projects = getProjects();
@@ -13,7 +14,7 @@ router.get('/', (_req: Request, res: Response) => {
   }
 });
 
-// GET /api/projects/:name
+// GET /api/projects/:name - All authenticated users can read
 router.get('/:name', (req: Request, res: Response) => {
   try {
     const project = getProject(req.params.name);
@@ -26,8 +27,8 @@ router.get('/:name', (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/projects/:name
-router.put('/:name', (req: Request, res: Response) => {
+// PUT /api/projects/:name - Only system_admin can modify
+router.put('/:name', requireSystemAdmin, (req: Request, res: Response) => {
   try {
     updateProject(req.params.name, req.body);
     const project = getProject(req.params.name);
@@ -37,8 +38,8 @@ router.put('/:name', (req: Request, res: Response) => {
   }
 });
 
-// POST /api/projects
-router.post('/', (req: Request, res: Response) => {
+// POST /api/projects - Only system_admin can create
+router.post('/', requireSystemAdmin, (req: Request, res: Response) => {
   try {
     const project = req.body;
     if (!project.name) {
@@ -51,8 +52,8 @@ router.post('/', (req: Request, res: Response) => {
   }
 });
 
-// DELETE /api/projects/:name
-router.delete('/:name', (req: Request, res: Response) => {
+// DELETE /api/projects/:name - Only system_admin can delete
+router.delete('/:name', requireSystemAdmin, (req: Request, res: Response) => {
   try {
     deleteProject(req.params.name);
     res.json({ success: true });

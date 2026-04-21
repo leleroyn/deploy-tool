@@ -8,7 +8,7 @@ router.get('/', (_req: Request, res: Response) => {
   try {
     const commands = getCommands();
     const grouped: Record<string, typeof commands> = {};
-    
+
     commands.forEach(cmd => {
       const group = cmd.group || '未分组';
       if (!grouped[group]) {
@@ -16,7 +16,7 @@ router.get('/', (_req: Request, res: Response) => {
       }
       grouped[group].push(cmd);
     });
-    
+
     res.json({ success: true, data: grouped });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

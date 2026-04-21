@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Settings, Key, Server, Plus, Trash2, ChevronDown, ChevronUp, Save, Loader } from 'lucide-react';
+import { Key, Server, Plus, Trash2, ChevronDown, ChevronUp, Save, Loader, AlertTriangle, X } from 'lucide-react';
 import { api } from '../api/http';
 import { useAppStore } from '../store/appStore';
 import { Project, SSHConfig } from '../types';
@@ -9,13 +9,16 @@ const SettingsPage: React.FC = () => {
   const [sshConfig, setSSHConfig] = useState<SSHConfig>({ user: '', key: '' });
   const [sshSaving, setSSHSaving] = useState(false);
   const [sshMsg, setSSHMsg] = useState('');
+  const [sshConfirm, setSSHConfirm] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [expandedProject, setExpandedProject] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Project>>({});
   const [projSaving, setProjSaving] = useState(false);
   const [projMsg, setProjMsg] = useState('');
+  const [projConfirm, setProjConfirm] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newProject, setNewProject] = useState<Partial<Project>>({ name: '', server: [], bindPorts: [], localDir: '', remoteDir: '', backupDir: '', restartCmd: '', exclude: '' });
+  const [addConfirm, setAddConfirm] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -28,10 +31,15 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleSaveSSH = async () => {
+    if (!sshConfirm) {
+      setSSHConfirm(true);
+      return;
+    }
     setSSHSaving(true);
     setSSHMsg('');
     const res = await api.updateSSHConfig(sshConfig);
     setSSHSaving(false);
+    setSSHConfirm(false);
     setSSHMsg(res.success ? '保存成功' : (res.error || '保存失败'));
     if (res.success) setTimeout(() => setSSHMsg(''), 2000);
   };
@@ -54,14 +62,20 @@ const SettingsPage: React.FC = () => {
       }
       setExpandedProject(name);
       setProjMsg('');
+      setProjConfirm(null);
     }
   };
 
   const handleSaveProject = async (name: string) => {
+    if (projConfirm !== name) {
+      setProjConfirm(name);
+      return;
+    }
     setProjSaving(true);
     setProjMsg('');
     const res = await api.updateProject(name, editData);
     setProjSaving(false);
+    setProjConfirm(null);
     if (res.success) {
       setProjMsg('保存成功');
       loadData();
@@ -73,15 +87,23 @@ const SettingsPage: React.FC = () => {
   };
 
   const handleDeleteProject = async (name: string) => {
-    if (!confirm(`确认删除项目 ${name}？`)) return;
+    if (projConfirm !== `delete_${name}`) {
+      setProjConfirm(`delete_${name}`);
+      return;
+    }
     await api.deleteProject(name);
     setExpandedProject(null);
+    setProjConfirm(null);
     loadData();
     loadProjects();
   };
 
   const handleAddProject = async () => {
     if (!newProject.name) return;
+    if (!addConfirm) {
+      setAddConfirm(true);
+      return;
+    }
     const proj: Project = {
       name: newProject.name!,
       server: newProject.server || [],
@@ -96,9 +118,16 @@ const SettingsPage: React.FC = () => {
     if (res.success) {
       setShowAddForm(false);
       setNewProject({ name: '', server: [], bindPorts: [] });
+      setAddConfirm(false);
       loadData();
       loadProjects();
     }
+  };
+
+  const cancelConfirm = () => {
+    setSSHConfirm(false);
+    setProjConfirm(null);
+    setAddConfirm(false);
   };
 
   return (
@@ -133,14 +162,34 @@ const SettingsPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleSaveSSH}
-              disabled={sshSaving}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/80 hover:bg-primary text-white text-sm font-medium transition-all disabled:opacity-50"
-            >
-              {sshSaving ? <Loader size={13} className="animate-spin" /> : <Save size={13} />}
-              保存
-            </button>
+            {sshConfirm ? (
+              <div className="flex items-center gap-2 pt-1">
+                <AlertTriangle size={14} className="text-status-error" />
+                <span className="text-xs text-status-error">确认保存 SSH 配置？</span>
+                <button
+                  onClick={handleSaveSSH}
+                  disabled={sshSaving}
+                  className="px-2.5 py-1 text-xs rounded bg-status-error text-white hover:bg-status-error/80 transition-colors"
+                >
+                  确认
+                </button>
+                <button
+                  onClick={cancelConfirm}
+                  className="p-1 rounded text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleSaveSSH}
+                disabled={sshSaving}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/80 hover:bg-primary text-white text-sm font-medium transition-all disabled:opacity-50"
+              >
+                {sshSaving ? <Loader size={13} className="animate-spin" /> : <Save size={13} />}
+                保存
+              </button>
+            )}
             {sshMsg && (
               <span className={`text-xs ${sshMsg === '保存成功' ? 'text-status-success' : 'text-status-error'}`}>
                 {sshMsg}
@@ -186,11 +235,12 @@ const SettingsPage: React.FC = () => {
                   <input
                     type="text"
                     placeholder={placeholder}
-                    value={
-                      key === 'server' ? (newProject.server || []).join(',') :
-                      key === 'bindPorts' ? (newProject.bindPorts || []).join(',') :
-                      (newProject as any)[key] || ''
-                    }
+                       value={
+                         key === 'server' ? (newProject.server || []).join(',') :
+                         key === 'bindPorts' ? (newProject.bindPorts || []).join(',') :
+                         String((newProject as Record<string, unknown>)[key] || '')
+                       }
+
                     onChange={(e) => {
                       if (key === 'server') {
                         setNewProject({ ...newProject, server: e.target.value.split(',').map(s => s.trim()) });
@@ -206,12 +256,27 @@ const SettingsPage: React.FC = () => {
               ))}
             </div>
             <div className="flex gap-2 mt-3">
-              <button onClick={handleAddProject} className="px-3 py-1.5 text-xs bg-primary/80 hover:bg-primary text-white rounded-lg transition-all">
-                添加
-              </button>
-              <button onClick={() => setShowAddForm(false)} className="px-3 py-1.5 text-xs bg-bg-tertiary text-text-secondary border border-border rounded-lg transition-all hover:text-text-primary">
-                取消
-              </button>
+              {addConfirm ? (
+                <div className="flex items-center gap-2">
+                  <AlertTriangle size={14} className="text-status-error" />
+                  <span className="text-xs text-status-error">确认添加？</span>
+                  <button onClick={handleAddProject} className="px-3 py-1.5 text-xs bg-status-error hover:bg-status-error/80 text-white rounded-lg transition-all">
+                    确认
+                  </button>
+                  <button onClick={cancelConfirm} className="p-1 rounded text-text-secondary hover:text-text-primary transition-colors">
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button onClick={handleAddProject} className="px-3 py-1.5 text-xs bg-primary/80 hover:bg-primary text-white rounded-lg transition-all">
+                    添加
+                  </button>
+                  <button onClick={() => setShowAddForm(false)} className="px-3 py-1.5 text-xs bg-bg-tertiary text-text-secondary border border-border rounded-lg transition-all hover:text-text-primary">
+                    取消
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -229,13 +294,33 @@ const SettingsPage: React.FC = () => {
                   <span className="text-[11px] text-text-secondary">{proj.server.join(', ')}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDeleteProject(proj.name); }}
-                    className="p-1 rounded text-text-secondary hover:text-status-error hover:bg-status-error/10 transition-all"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                  {expandedProject === proj.name ? <ChevronUp size={14} className="text-text-secondary" /> : <ChevronDown size={14} className="text-text-secondary" />}
+                  {projConfirm === `delete_${proj.name}` ? (
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <AlertTriangle size={12} className="text-status-error" />
+                      <button
+                        onClick={() => handleDeleteProject(proj.name)}
+                        className="px-2 py-0.5 text-[10px] rounded bg-status-error text-white"
+                      >
+                        确认
+                      </button>
+                      <button
+                        onClick={cancelConfirm}
+                        className="p-0.5 rounded text-text-secondary hover:text-text-primary"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteProject(proj.name); }}
+                        className="p-1 rounded text-text-secondary hover:text-status-error hover:bg-status-error/10 transition-all"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                      {expandedProject === proj.name ? <ChevronUp size={14} className="text-text-secondary" /> : <ChevronDown size={14} className="text-text-secondary" />}
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -255,11 +340,12 @@ const SettingsPage: React.FC = () => {
                         <label className="block text-[11px] text-text-secondary mb-1">{label}</label>
                         <input
                           type="text"
-                          value={
-                            key === 'server' ? ((editData.server || []).join(',')) :
-                            key === 'bindPorts' ? ((editData.bindPorts || []).join(',')) :
-                            (editData as any)[key] || ''
-                          }
+                           value={
+                             key === 'server' ? ((editData.server || []).join(',')) :
+                             key === 'bindPorts' ? ((editData.bindPorts || []).join(',')) :
+                             String((editData as Record<string, unknown>)[key] || '')
+                           }
+
                           onChange={(e) => {
                             if (key === 'server') {
                               setEditData({ ...editData, server: e.target.value.split(',').map(s => s.trim()) });
@@ -276,14 +362,34 @@ const SettingsPage: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-3 mt-3">
-                    <button
-                      onClick={() => handleSaveProject(proj.name)}
-                      disabled={projSaving}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-primary/80 hover:bg-primary text-white rounded-lg transition-all disabled:opacity-50"
-                    >
-                      {projSaving ? <Loader size={11} className="animate-spin" /> : <Save size={11} />}
-                      保存修改
-                    </button>
+                    {projConfirm === proj.name ? (
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle size={14} className="text-status-error" />
+                        <span className="text-xs text-status-error">确认保存？</span>
+                        <button
+                          onClick={() => handleSaveProject(proj.name)}
+                          disabled={projSaving}
+                          className="px-2.5 py-1 text-xs rounded bg-status-error text-white hover:bg-status-error/80 transition-colors disabled:opacity-50"
+                        >
+                          确认
+                        </button>
+                        <button
+                          onClick={cancelConfirm}
+                          className="p-1 rounded text-text-secondary hover:text-text-primary transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleSaveProject(proj.name)}
+                        disabled={projSaving}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-primary/80 hover:bg-primary text-white rounded-lg transition-all disabled:opacity-50"
+                      >
+                        {projSaving ? <Loader size={11} className="animate-spin" /> : <Save size={11} />}
+                        保存修改
+                      </button>
+                    )}
                     {projMsg && (
                       <span className={`text-xs ${projMsg === '保存成功' ? 'text-status-success' : 'text-status-error'}`}>
                         {projMsg}
