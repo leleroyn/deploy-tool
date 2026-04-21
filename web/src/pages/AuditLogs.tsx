@@ -190,7 +190,12 @@ const AuditLogs: React.FC = () => {
                   </td>
                   <td className="px-6 py-3 text-sm text-text-primary font-mono">{log.target}</td>
                   <td className={`px-6 py-3 text-sm font-medium ${resultColor(log.result)}`}>{log.result}</td>
-                  <td className="px-6 py-3 text-sm text-text-secondary">{log.timestamp.replace('T', ' ').slice(0, 19)}</td>
+                  <td className="px-6 py-3 text-sm text-text-secondary">
+                      {(() => {
+                        const ts = log.timestamp.replace(' ', 'T') + 'Z';
+                        return new Date(ts).toLocaleString('zh-CN', { hour12: false });
+                      })()}
+                    </td>
                 </tr>
               ))
             )}
