@@ -1,6 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Task, TaskType, TaskStatus } from '../types';
 import { runScript } from './scriptRunner';
+import { auditService } from '../services/auditService';
+import { AuditEventType } from '../types';
 
 export type LogListener = (taskId: string, chunk: string) => void;
 export type StatusListener = (task: Task) => void;
@@ -115,10 +117,26 @@ function processNext() {
       process.stdout.write(chunk); // 同时打印到后端终端
       emitLog(taskId, chunk);
     },
-    onExit: (code) => {
+    onExit: async (code) => {
       console.log(`[Task] 执行完成: ${task.type} / ${task.project} exitCode=${code}`);
       const status: TaskStatus = code === 0 ? 'success' : 'failed';
       updateTask(running, { status, endTime: new Date().toISOString(), exitCode: code });
+
+      // 记录审计日志
+      const eventTypeMap: Record<string, string> = {
+        'deploy': AuditEventType.DEPLOY,
+        'backup': AuditEventType.BACKUP,
+        'remote': AuditEventType.REMOTE_CMD,
+        'check-ports': AuditEventType.PORT_CHECK
+      };
+      await auditService.log(
+        task.operatorId,
+        task.operatorName,
+        eventTypeMap[task.type] || task.type,
+        task.project,
+        status === 'success' ? '成功' : '失败'
+      );
+
       runningTaskId = null;
       pruneOldTasks();
       processNext();
@@ -126,7 +144,7 @@ function processNext() {
   });
 }
 
-export function createTask(type: TaskType, project: string, dryRun = false): Task {
+export function createTask(type: TaskType, project: string, operatorId: string, operatorName: string, dryRun = false): Task {
   const task: Task = {
     id: uuidv4(),
     type,
@@ -134,6 +152,8 @@ export function createTask(type: TaskType, project: string, dryRun = false): Tas
     status: 'pending',
     dryRun,
     startTime: new Date().toISOString(),
+    operatorId,
+    operatorName,
   };
   tasks.set(task.id, task);
   queue.push(task.id);

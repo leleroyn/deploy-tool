@@ -67,7 +67,7 @@ const UserManagementPage: React.FC = () => {
     try {
       const res = await api.getUsers();
       if (res.success && res.data) {
-        setUsers(res.data);
+        setUsers(res.data as UserWithOtp[]);
       } else {
         setMessage(res.error || '获取用户列表失败');
         setMsgType('error');

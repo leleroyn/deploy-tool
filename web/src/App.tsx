@@ -8,6 +8,7 @@ import PortCheckPage from './pages/PortCheckPage';
 import RemoteMaintenancePage from './pages/RemoteMaintenancePage';
 import LogsPage from './pages/LogsPage';
 import SettingsPage from './pages/SettingsPage';
+import AuditLogs from './pages/AuditLogs';
 import LoginPage from './pages/LoginPage';
 import UserManagementPage from './pages/UserManagementPage';
 import { useAppStore } from './store/appStore';
@@ -92,12 +93,18 @@ function App() {
           <Route path="/backup" element={<BackupPage />} />
           <Route path="/ports" element={<PortCheckPage />} />
           <Route path="/remote" element={<RemoteMaintenancePage />} />
-          <Route path="/logs" element={<LogsPage />} />
-          <Route path="/settings" element={
-            <SettingsRouteGuard>
-              <SettingsPage />
-            </SettingsRouteGuard>
-          } />
+           <Route path="/logs" element={<LogsPage />} />
+           <Route path="/audit" element={
+             <SettingsRouteGuard>
+               <AuditLogs />
+             </SettingsRouteGuard>
+           } />
+           <Route path="/settings" element={
+             <SettingsRouteGuard>
+               <SettingsPage />
+             </SettingsRouteGuard>
+           } />
+
           <Route path="/users" element={<UserManagementPage />} />
         </Routes>
       </Layout>

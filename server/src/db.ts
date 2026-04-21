@@ -21,6 +21,23 @@ export function initDb() {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id TEXT PRIMARY KEY,
+      operator_id TEXT NOT NULL,
+      operator_name TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      target TEXT NOT NULL,
+      result TEXT NOT NULL,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (operator_id) REFERENCES users(id)
+    );
+  `);
+
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_audit_operator ON audit_logs(operator_name);`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_audit_event ON audit_logs(event_type);`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_logs(timestamp);`);
+
   // Add avatar column if not exists (for existing databases)
   try {
     db.exec("ALTER TABLE users ADD COLUMN avatar TEXT");

@@ -5,7 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { initDb } from './db';
 import { setupWebSocket } from './ws/wsHandler';
-import { authMiddleware } from './auth';
+import { authMiddleware, requireSystemAdmin } from './auth';
 import authRouter from './routes/auth';
 import usersRouter from './routes/users';
 import projectsRouter from './routes/projects';
@@ -14,6 +14,7 @@ import logsRouter from './routes/logs';
 import sshRouter from './routes/ssh';
 import deployRouter from './routes/deploy';
 import commandsRouter from './routes/commands';
+import auditRouter from './routes/audit';
 
 dotenv.config();
 
@@ -63,6 +64,7 @@ app.get('/api/health', (_req, res) => {
 // 登录/登出（不需要登录）
 app.use('/api/auth', authRouter);
 app.use('/api/users', authMiddleware, usersRouter);
+app.use('/api/audit', authMiddleware, requireSystemAdmin, auditRouter);
 
 // 以下路由需要登录
 app.use('/api/projects', authMiddleware, projectsRouter);

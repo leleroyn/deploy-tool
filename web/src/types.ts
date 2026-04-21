@@ -1,5 +1,14 @@
 // 前端共享类型定义
 
+export interface User {
+  id: string;
+  username: string;
+  role: 'ops_admin' | 'system_admin';
+  avatar?: string;
+  is_frozen?: boolean;
+  created_at?: string;
+}
+
 export interface Project {
   name: string;
   server: string[];
@@ -18,6 +27,16 @@ export interface SSHConfig {
 
 export type TaskType = 'deploy' | 'backup' | 'check-ports' | 'remote';
 export type TaskStatus = 'pending' | 'running' | 'success' | 'failed';
+
+export enum AuditEventType {
+  LOGIN = '登录',
+  BACKUP = '备份',
+  DEPLOY = '部署',
+  REMOTE_CMD = '远程命令',
+  USER_MGMT = '用户管理',
+  SYS_SETTINGS = '系统设置',
+  PORT_CHECK = '端口检测',
+}
 
 export interface Task {
   id: string;
@@ -79,6 +98,16 @@ export interface RemoteCommand {
   server: string[];
   command: string;
   group: string;
+}
+
+export interface AuditLog {
+  id: string;
+  operator_id: string;
+  operator_name: string;
+  event_type: string;
+  target: string;
+  result: string;
+  timestamp: string;
 }
 
 export interface CommandExecResult {

@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { getProjects, getProject, updateProject, addProject, deleteProject } from '../config/iniManager';
 import { requireSystemAdmin } from '../auth';
+import { auditService } from '../services/auditService';
+import { AuditEventType } from '../types';
 
 const router = Router();
 
@@ -28,9 +30,11 @@ router.get('/:name', (req: Request, res: Response) => {
 });
 
 // PUT /api/projects/:name - Only system_admin can modify
-router.put('/:name', requireSystemAdmin, (req: Request, res: Response) => {
+router.put('/:name', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
     updateProject(req.params.name, req.body);
+    await auditService.log(user.id, user.username, AuditEventType.SYS_SETTINGS, req.params.name, 'Success');
     const project = getProject(req.params.name);
     res.json({ success: true, data: project });
   } catch (err: any) {
@@ -39,13 +43,15 @@ router.put('/:name', requireSystemAdmin, (req: Request, res: Response) => {
 });
 
 // POST /api/projects - Only system_admin can create
-router.post('/', requireSystemAdmin, (req: Request, res: Response) => {
+router.post('/', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
     const project = req.body;
     if (!project.name) {
       return res.status(400).json({ success: false, error: '项目名称不能为空' });
     }
     addProject(project);
+    await auditService.log(user.id, user.username, 'System Settings', project.name, 'Success');
     res.json({ success: true, data: project });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -53,9 +59,11 @@ router.post('/', requireSystemAdmin, (req: Request, res: Response) => {
 });
 
 // DELETE /api/projects/:name - Only system_admin can delete
-router.delete('/:name', requireSystemAdmin, (req: Request, res: Response) => {
+router.delete('/:name', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
     deleteProject(req.params.name);
+    await auditService.log(user.id, user.username, AuditEventType.SYS_SETTINGS, req.params.name, 'Success');
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

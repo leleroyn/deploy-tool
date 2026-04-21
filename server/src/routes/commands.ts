@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getCommands, getCommand, getCommandHistory } from '../config/iniManager';
 import { createTask, isProjectBusy } from '../tasks/taskQueue';
+import { requireSystemAdmin } from '../auth';
 
 const router = Router();
 
@@ -32,28 +33,29 @@ router.get('/history', (_req: Request, res: Response) => {
   }
 });
 
-router.post('/:name/exec', (req: Request, res: Response) => {
+router.post('/:name/exec', requireSystemAdmin, async (req: Request, res: Response) => {
   const { name } = req.params;
   
   try {
+    const user = (req as any).user;
     const cmd = getCommand(name);
     if (!cmd) {
       return res.status(404).json({ success: false, error: '命令不存在' });
     }
-
+    
     if (!cmd.server || cmd.server.length === 0) {
       return res.status(400).json({ success: false, error: '命令缺少 server 配置' });
     }
-
+    
     if (!cmd.command) {
       return res.status(400).json({ success: false, error: '命令缺少 command 配置' });
     }
-
+    
     if (isProjectBusy(name)) {
       return res.status(409).json({ success: false, error: '该命令正在执行中，请稍后再试' });
     }
-
-    const task = createTask('remote', name);
+    
+    const task = createTask('remote', name, user.id, user.username);
     res.json({ success: true, data: task });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

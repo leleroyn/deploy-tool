@@ -1,4 +1,4 @@
-import { ApiResponse, Project, SSHConfig, Task, LogFileMeta, PreflightData, GroupedCommands, CommandHistory } from '../types';
+import { ApiResponse, Project, SSHConfig, Task, LogFileMeta, PreflightData, GroupedCommands, CommandHistory, AuditLog, User } from '../types';
 
 const BASE = '/api';
 
@@ -46,20 +46,19 @@ export const api = {
   logout: () =>
     request('/auth/logout', { method: 'POST' }),
   me: () =>
-    request<any>('/auth/me'),
+    request<User>('/auth/me'),
   updateMe: (data: { avatar?: string; password?: string }) =>
-    request<any>('/users/me', { method: 'PUT', body: JSON.stringify(data) }),
+    request<User>('/users/me', { method: 'PUT', body: JSON.stringify(data) }),
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
-    request<any>('/users/change-password', { method: 'POST', body: JSON.stringify(data) }),
-  getUsers: () => request<any[]>('/users'),
-  createUser: (data: { username: string; password: string; role: string }) =>
-    request<any>('/users', { method: 'POST', body: JSON.stringify(data) }),
-  updateUser: (id: string, data: any) =>
-    request<any>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    request<void>('/users/change-password', { method: 'POST', body: JSON.stringify(data) }),
+  getUsers: () => request<User[]>('/users'),
+  createUser: (data: { username: string; password: string; role: 'ops_admin' | 'system_admin' }) =>
+    request<User>('/users', { method: 'POST', body: JSON.stringify(data) }),
+  updateUser: (id: string, data: Partial<User>) =>
+    request<User>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   resetUserOtp: (id: string) =>
-    request<any>(`/users/${id}/reset-otp`, { method: 'POST' }),
-
-
+    request<void>(`/users/${id}/reset-otp`, { method: 'POST' }),
+  
   // 项目
   getProjects: () => request<Project[]>('/projects'),
   getProject: (name: string) => request<Project>(`/projects/${name}`),
@@ -69,7 +68,7 @@ export const api = {
     request<Project>('/projects', { method: 'POST', body: JSON.stringify(data) }),
   deleteProject: (name: string) =>
     request(`/projects/${name}`, { method: 'DELETE' }),
-
+  
   // 任务
   getTasks: () => request<Task[]>('/tasks'),
   getTask: (id: string) => request<Task>(`/tasks/${id}`),
@@ -79,24 +78,24 @@ export const api = {
     request<Task>('/tasks/backup', { method: 'POST', body: JSON.stringify({ project }) }),
   checkPorts: (project: string) =>
     request<Task>('/tasks/check-ports', { method: 'POST', body: JSON.stringify({ project }) }),
-
+  
   // SSH
   getSSHConfig: () => request<SSHConfig>('/ssh-config'),
   updateSSHConfig: (data: Partial<SSHConfig>) =>
     request<SSHConfig>('/ssh-config', { method: 'PUT', body: JSON.stringify(data) }),
-
+  
   // 日志
   getLogFiles: () => request<LogFileMeta[]>('/logs/files'),
   getLog: (type: string) => request<string>(`/logs/${type}`),
   clearLog: (type: string) => request(`/logs/${type}`, { method: 'DELETE' }),
-
+  
   // 健康检查
   health: () => request<{ status: string }>('/health'),
-
+  
   // 部署预检 & 文件管理
   deployPreflight: (project: string) =>
     request<PreflightData>(`/deploy/preflight/${encodeURIComponent(project)}`),
-
+  
   deployUpload: (project: string, file: File, onProgress?: (pct: number) => void): Promise<ApiResponse<{ filename: string; size: string; savedTo: string }>> => {
     return new Promise((resolve) => {
       const token = getToken();
@@ -118,13 +117,28 @@ export const api = {
       xhr.send(formData);
     });
   },
-
+  
   deployDeleteFile: (project: string, filename: string) =>
     request(`/deploy/files/${encodeURIComponent(project)}/${encodeURIComponent(filename)}`, { method: 'DELETE' }),
-
+  
   // 远程命令
   getCommands: () => request<GroupedCommands>('/commands'),
   execCommand: (name: string) =>
     request<Task>(`/tasks/remote`, { method: 'POST', body: JSON.stringify({ commandName: name }) }),
   getCommandHistory: (count: number = 100) => request<CommandHistory[]>(`/commands/history?count=${count}`),
+  
+  // 审计日志
+  getAuditLogs: (params: { 
+    username?: string; 
+    eventType?: string; 
+    target?: string; 
+    result?: string; 
+    startTime?: string; 
+    endTime?: string; 
+    page?: number; 
+    limit?: number; 
+  }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return request<AuditLog[]>(`/audit/logs?${query}`);
+  },
 };

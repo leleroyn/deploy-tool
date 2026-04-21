@@ -19,6 +19,16 @@ export interface SSHConfig {
 export type TaskType = 'deploy' | 'backup' | 'check-ports' | 'remote';
 export type TaskStatus = 'pending' | 'running' | 'success' | 'failed';
 
+export enum AuditEventType {
+  LOGIN = '登录',
+  BACKUP = '备份',
+  DEPLOY = '部署',
+  REMOTE_CMD = '远程命令',
+  USER_MGMT = '用户管理',
+  SYS_SETTINGS = '系统设置',
+  PORT_CHECK = '端口检测',
+}
+
 export interface Task {
   id: string;
   type: TaskType;
@@ -28,6 +38,8 @@ export interface Task {
   startTime: string;
   endTime?: string;
   exitCode?: number;
+  operatorId: string;
+  operatorName: string;
 }
 
 export interface PortStatus {

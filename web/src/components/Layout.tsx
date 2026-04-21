@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Rocket, Archive, Radio, FileText, Settings, Menu, Server, Bell, Terminal, Users } from 'lucide-react';
+import { LayoutDashboard, Rocket, Archive, Radio, FileText, Settings, Menu, Server, Bell, Terminal, Users, ShieldCheck } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import UserDropdown from './UserDropdown';
 
@@ -21,6 +21,7 @@ const getNavItems = (role: string) => {
   ];
   if (role === 'system_admin') {
     items.push({ to: '/settings', icon: Settings, label: '系统设置' });
+    items.push({ to: '/audit', icon: ShieldCheck, label: '审计日志' });
   }
   return items;
 };

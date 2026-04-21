@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { getSSHConfig, updateSSHConfig } from '../config/iniManager';
 import { requireSystemAdmin } from '../auth';
+import { auditService } from '../services/auditService';
+import { AuditEventType } from '../types';
 
 const router = Router();
 
@@ -15,9 +17,11 @@ router.get('/', requireSystemAdmin, (_req: Request, res: Response) => {
 });
 
 // PUT /api/ssh-config
-router.put('/', requireSystemAdmin, (req: Request, res: Response) => {
+router.put('/', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
     updateSSHConfig(req.body);
+    await auditService.log(user.id, user.username, AuditEventType.SYS_SETTINGS, 'SSH Configuration', 'Success');
     const config = getSSHConfig();
     res.json({ success: true, data: config });
   } catch (err: any) {

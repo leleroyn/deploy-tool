@@ -7,6 +7,7 @@ const router = Router();
 // POST /api/tasks/deploy
 router.post('/deploy', (req: Request, res: Response) => {
   const { project, dryRun } = req.body;
+  const user = (req as any).user;
   if (!project) {
     return res.status(400).json({ success: false, error: '缺少项目名称' });
   }
@@ -17,13 +18,14 @@ router.post('/deploy', (req: Request, res: Response) => {
   if (isProjectBusy(project)) {
     return res.status(409).json({ success: false, error: '该项目正在执行中，请稍后再试' });
   }
-  const task = createTask('deploy', project, !!dryRun);
+  const task = createTask('deploy', project, user.id, user.username, !!dryRun);
   res.json({ success: true, data: task });
 });
 
 // POST /api/tasks/backup
 router.post('/backup', (req: Request, res: Response) => {
   const { project } = req.body;
+  const user = (req as any).user;
   if (!project) {
     return res.status(400).json({ success: false, error: '缺少项目名称' });
   }
@@ -36,13 +38,14 @@ router.post('/backup', (req: Request, res: Response) => {
   if (isProjectBusy(project)) {
     return res.status(409).json({ success: false, error: '该项目正在执行中，请稍后再试' });
   }
-  const task = createTask('backup', project);
+  const task = createTask('backup', project, user.id, user.username);
   res.json({ success: true, data: task });
 });
 
 // POST /api/tasks/check-ports
 router.post('/check-ports', (req: Request, res: Response) => {
   const { project } = req.body;
+  const user = (req as any).user;
   if (!project) {
     return res.status(400).json({ success: false, error: '缺少项目名称' });
   }
@@ -55,13 +58,14 @@ router.post('/check-ports', (req: Request, res: Response) => {
   if (isProjectBusy(project)) {
     return res.status(409).json({ success: false, error: '该项目正在执行中，请稍后再试' });
   }
-  const task = createTask('check-ports', project);
+  const task = createTask('check-ports', project, user.id, user.username);
   res.json({ success: true, data: task });
 });
 
 // POST /api/tasks/remote
 router.post('/remote', (req: Request, res: Response) => {
   const { commandName } = req.body;
+  const user = (req as any).user;
   if (!commandName) {
     return res.status(400).json({ success: false, error: '缺少命令名称' });
   }
@@ -72,7 +76,7 @@ router.post('/remote', (req: Request, res: Response) => {
   if (isProjectBusy(commandName)) {
     return res.status(409).json({ success: false, error: '该命令正在执行中，请稍后再试' });
   }
-  const task = createTask('remote', commandName);
+  const task = createTask('remote', commandName, user.id, user.username);
   res.json({ success: true, data: task });
 });
 
