@@ -21,7 +21,7 @@ router.put('/', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     updateSSHConfig(req.body);
-    await auditService.log(user.id, user.username, AuditEventType.SYS_SETTINGS, 'SSH Configuration', 'Success');
+    await auditService.log(user.id, user.username, AuditEventType.SYS_SETTINGS, 'SSH Configuration', '成功');
     const config = getSSHConfig();
     res.json({ success: true, data: config });
   } catch (err: any) {
