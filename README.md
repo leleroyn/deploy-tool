@@ -36,7 +36,7 @@ Deploy Tool 为一套完整的 **Web 管理平台**，核心理念是：
 | 🔧 **远程维护**        | 预置运维命令分组管理，支持二次确认执行、执行记录展示、实时日志输出                              |
 | ⚙️ **在线配置编辑**      | 通过 Web 设置页直接编辑 `config.toml`，无需登录服务器                           |
 | 🐳 **Docker 一键部署** | 多阶段 Dockerfile 构建，单容器单端口，开箱即用                                  |
-| 🔑 **JWT 认证**      | 密码通过环境变量配置，无状态 JWT token 认证                                    |
+| 🔑 **Session 认证**    | 初始密码通过环境变量配置，有状态 Session Token 认证                                    |
 | 🔐 **双因素认证**      | 运维管理员强制启用 TOTP 双因素认证（Google Authenticator 等）                      |
 | ⏰ **Session 管理**   | 关闭浏览器自动失效，最大 24 小时有效期                                            |
 | 👤 **用户管理**        | 头像上传、密码修改、管理员可管理用户角色、账户状态（冻结/解冻）、OTP 重置                       |
@@ -68,7 +68,7 @@ Deploy Tool 为一套完整的 **Web 管理平台**，核心理念是：
 │                                                             │
 │  ┌─────────┐  ┌──────────┐  ┌──────────┐  ┌───────────┐  │
 │  │ 认证中间 │  │  路由层   │  │  任务队列 │  │ WebSocket │  │
-│  │  件(JWT) │  │(projects │  │(taskQueue│  │  Server   │  │
+│  │  件(Token) │  │(projects │  │(taskQueue│  │  Server   │  │
 │  └─────────┘  │ tasks,   │  │   .ts)   │  │(wsServer) │  │
 │               │ deploy,  │  └────┬─────┘  └─────┬─────┘  │
 │               │ logs,ssh,│       │               │        │
@@ -263,7 +263,7 @@ cd web && npm install && npm run dev      # 端口 5173
 
 | 变量名                  | 说明                            |
 | -------------------- | ----------------------------- |
-| `DEPLOY_PASSWORD`    | 登录密码（必填）                      |
+| `DEPLOY_PASSWORD`    | 初始登录密码（必填）                      |
 | `PORT`               | 后端服务端口，默认 `3001`              |
 | `SCRIPT_DIR`         | 脚本目录，默认 `/app/script`         |
 | `CONFIG_FILE`        | 配置文件路径，默认 `/app/config.toml`  |
