@@ -5,7 +5,6 @@ node_modules/
 dist/
 .env
 .env.local
-.*
 
 # Build output
 server/dist/
@@ -20,3 +19,4 @@ web/dist/
 Thumbs.db
 /openspec
 /.opencode
+/.claude
