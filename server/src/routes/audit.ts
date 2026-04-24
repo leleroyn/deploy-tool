@@ -6,15 +6,16 @@ const router = Router();
 
 router.get('/logs', async (req: Request, res: Response) => {
   try {
-    const { 
-      username, 
-      eventType, 
-      target, 
-      result, 
-      startTime, 
-      endTime, 
-      page, 
-      limit 
+    const {
+      username,
+      eventType,
+      target,
+      result,
+      operatorIp,
+      startTime,
+      endTime,
+      page,
+      limit
     } = req.query as any;
 
     const filter: AuditFilter = {
@@ -22,6 +23,7 @@ router.get('/logs', async (req: Request, res: Response) => {
       eventType: eventType as string,
       target: target as string,
       result: result as string,
+      operatorIp: operatorIp as string,
       startTime: startTime as string,
       endTime: endTime as string,
       limit: limit ? parseInt(limit) : 20,

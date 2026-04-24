@@ -8,6 +8,7 @@ export interface AuditLog {
   event_type: string;
   target: string;
   result: string;
+  operator_ip: string;
   timestamp: string;
 }
 
@@ -16,6 +17,7 @@ export interface AuditFilter {
   eventType?: string;
   target?: string;
   result?: string;
+  operatorIp?: string;
   startTime?: string;
   endTime?: string;
   limit?: number;
@@ -26,10 +28,10 @@ export class AuditRepository {
   async create(log: Omit<AuditLog, 'id' | 'timestamp'>): Promise<void> {
     const id = uuidv4();
     const stmt = db.prepare(`
-      INSERT INTO audit_logs (id, operator_id, operator_name, event_type, target, result)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO audit_logs (id, operator_id, operator_name, event_type, target, result, operator_ip)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
-    stmt.run(id, log.operator_id, log.operator_name, log.event_type, log.target, log.result);
+    stmt.run(id, log.operator_id, log.operator_name, log.event_type, log.target, log.result, log.operator_ip || '');
   }
 
   async find(filter: AuditFilter): Promise<AuditLog[]> {
@@ -52,6 +54,10 @@ export class AuditRepository {
     if (filter.result) {
       whereClauses.push('result = ?');
       params.push(filter.result);
+    }
+    if (filter.operatorIp) {
+      whereClauses.push('operator_ip = ?');
+      params.push(filter.operatorIp);
     }
     if (filter.startTime) {
       whereClauses.push('timestamp >= ?');

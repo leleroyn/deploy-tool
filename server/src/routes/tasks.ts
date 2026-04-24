@@ -18,7 +18,7 @@ router.post('/deploy', (req: Request, res: Response) => {
   if (isProjectBusy(project)) {
     return res.status(409).json({ success: false, error: '该项目正在执行中，请稍后再试' });
   }
-  const task = createTask('deploy', project, user.id, user.username, !!dryRun);
+  const task = createTask('deploy', project, user.id, user.username, !!dryRun, req.ip);
   res.json({ success: true, data: task });
 });
 
@@ -38,7 +38,7 @@ router.post('/backup', (req: Request, res: Response) => {
   if (isProjectBusy(project)) {
     return res.status(409).json({ success: false, error: '该项目正在执行中，请稍后再试' });
   }
-  const task = createTask('backup', project, user.id, user.username);
+  const task = createTask('backup', project, user.id, user.username, false, req.ip);
   res.json({ success: true, data: task });
 });
 
@@ -58,7 +58,7 @@ router.post('/check-ports', (req: Request, res: Response) => {
   if (isProjectBusy(project)) {
     return res.status(409).json({ success: false, error: '该项目正在执行中，请稍后再试' });
   }
-  const task = createTask('check-ports', project, user.id, user.username);
+  const task = createTask('check-ports', project, user.id, user.username, false, req.ip);
   res.json({ success: true, data: task });
 });
 
@@ -76,7 +76,7 @@ router.post('/remote', (req: Request, res: Response) => {
   if (isProjectBusy(commandName)) {
     return res.status(409).json({ success: false, error: '该命令正在执行中，请稍后再试' });
   }
-  const task = createTask('remote', commandName, user.id, user.username);
+  const task = createTask('remote', commandName, user.id, user.username, false, req.ip);
   res.json({ success: true, data: task });
 });
 

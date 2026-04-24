@@ -46,6 +46,10 @@ export class SessionRepository {
   async deleteByUserId(userId: string): Promise<void> {
     db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
   }
+
+  async deleteByUserIdExceptToken(userId: string, excludeToken: string): Promise<void> {
+    db.prepare('DELETE FROM sessions WHERE user_id = ? AND token != ?').run(userId, excludeToken);
+  }
 }
 
 export const sessionRepository = new SessionRepository();

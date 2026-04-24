@@ -82,7 +82,7 @@ router.put('/me', async (req: Request, res: Response) => {
     const { avatar, password } = req.body;
     const { userRepository } = await import('../repositories/userRepository');
     await userRepository.updateProfile(user.id, { avatar, password });
-    await auditService.log(user.id, user.username, AuditEventType.USER_MGMT, 'Update Profile', '成功');
+    await auditService.log(user.id, user.username, AuditEventType.USER_MGMT, 'Update Profile', '成功', req.ip);
     
     res.json({ success: true });
   } catch (err: any) {
@@ -118,7 +118,7 @@ router.post('/change-password', async (req: Request, res: Response) => {
     }
 
     await changePassword(user.id, currentPassword, newPassword);
-    await auditService.log(user.id, user.username, AuditEventType.USER_MGMT, 'Change Password', '成功');
+    await auditService.log(user.id, user.username, AuditEventType.USER_MGMT, 'Change Password', '成功', req.ip);
     res.json({ success: true });
   } catch (err: any) {
     if (err.message === 'INVALID_CURRENT_PASSWORD') {
@@ -172,7 +172,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     await userRepository.create(username, password, role);
-    await auditService.log(user.id, user.username, AuditEventType.USER_MGMT, username, '成功');
+    await auditService.log(user.id, user.username, AuditEventType.USER_MGMT, username, '成功', req.ip);
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message || '创建用户失败' });
@@ -228,7 +228,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (is_frozen !== undefined) updateData.is_frozen = Boolean(is_frozen);
 
     await userRepository.update(req.params.id, updateData);
-    await auditService.log(user.id, user.username, AuditEventType.USER_MGMT, targetUser?.username || req.params.id, '成功');
+    await auditService.log(user.id, user.username, AuditEventType.USER_MGMT, targetUser?.username || req.params.id, '成功', req.ip);
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message || '更新用户失败' });
@@ -260,7 +260,7 @@ router.post('/:id/reset-otp', async (req: Request, res: Response) => {
 
     await userRepository.update(targetUserId, { otp_secret: null });
     await sessionRepository.deleteByUserId(targetUserId);
-    await auditService.log(currentUser.id, currentUser.username, AuditEventType.USER_MGMT, targetUser.username, '成功');
+    await auditService.log(currentUser.id, currentUser.username, AuditEventType.USER_MGMT, targetUser.username, '成功', req.ip);
 
     console.log(`[OTP Reset] Admin ${currentUser.id} reset OTP for user ${targetUserId} at ${new Date().toISOString()}`);
 

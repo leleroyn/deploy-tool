@@ -18,12 +18,12 @@ router.post('/login', async (req: Request, res: Response) => {
   try {
     const user = await userRepository.findByUsername(username);
     if (!user) {
-       await auditService.log('unknown', username || 'unknown', AuditEventType.LOGIN, 'Auth System', '失败');
+       await auditService.log('unknown', username || 'unknown', AuditEventType.LOGIN, 'Auth System', '失败', req.ip);
       res.status(401).json({ success: false, error: '用户名或密码错误' });
       return;
     }
     if (user.is_frozen) {
-       await auditService.log(user.id, user.username, AuditEventType.LOGIN, 'Auth System', '失败');
+       await auditService.log(user.id, user.username, AuditEventType.LOGIN, 'Auth System', '失败', req.ip);
       res.status(403).json({ success: false, error: '账号已被冻结' });
       return;
     }
@@ -31,7 +31,7 @@ router.post('/login', async (req: Request, res: Response) => {
     const bcrypt = await import('bcryptjs');
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
-       await auditService.log(user.id, user.username, AuditEventType.LOGIN, 'Auth System', '失败');
+       await auditService.log(user.id, user.username, AuditEventType.LOGIN, 'Auth System', '失败', req.ip);
       res.status(401).json({ success: false, error: '用户名或密码错误' });
       return;
     }
@@ -47,8 +47,9 @@ router.post('/login', async (req: Request, res: Response) => {
     } else {
       const { generateToken } = await import('../auth');
       const token = generateToken();
+      await sessionRepository.deleteByUserId(user.id);
       await sessionRepository.create(user.id, token);
-      await auditService.log(user.id, user.username, AuditEventType.LOGIN, 'Auth System', '成功');
+      await auditService.log(user.id, user.username, AuditEventType.LOGIN, 'Auth System', '成功', req.ip);
       res.json({ success: true, data: { token } });
     }
   } catch (err: any) {
@@ -112,6 +113,7 @@ router.post('/otp/verify', async (req: Request, res: Response) => {
 
       const { generateToken } = await import('../auth');
       const token = generateToken();
+      await sessionRepository.deleteByUserId(tokenData.userId);
       await sessionRepository.create(tokenData.userId, token);
       res.json({ success: true, data: { token } });
     } else {
@@ -144,15 +146,16 @@ router.post('/otp/verify-login', async (req: Request, res: Response) => {
 
     const isValid = verifyOtp(user.otp_secret, code);
     if (!isValid) {
-       await auditService.log(user.id, user.username, AuditEventType.LOGIN, 'Auth System', '失败');
+       await auditService.log(user.id, user.username, AuditEventType.LOGIN, 'Auth System', '失败', req.ip);
       res.status(401).json({ success: false, error: '验证码错误' });
       return;
     }
 
     const { generateToken } = await import('../auth');
     const token = generateToken();
+    await sessionRepository.deleteByUserId(user.id);
     await sessionRepository.create(user.id, token);
-    await auditService.log(user.id, user.username, AuditEventType.LOGIN, 'Auth System', '成功');
+    await auditService.log(user.id, user.username, AuditEventType.LOGIN, 'Auth System', '成功', req.ip);
     res.json({ success: true, data: { token } });
   } catch (err: any) {
     res.status(500).json({ success: false, error: '验证失败' });
@@ -173,9 +176,15 @@ router.get('/me', async (req: Request, res: Response) => {
     res.status(401).json({ success: false, error: '未登录' });
     return;
   }
+  const { verifyTokenWithSession } = await import('../auth');
+  const session = await verifyTokenWithSession(token);
+  if (!session) {
+    res.status(401).json({ success: false, error: '您的账号已在别处登录，请重新登录', reason: 'session_revoked' });
+    return;
+  }
   const user = await getCurrentUser(token);
   if (!user) {
-    res.status(401).json({ success: false, error: '无效的会话' });
+    res.status(401).json({ success: false, error: '用户不存在' });
     return;
   }
   const { password_hash, otp_secret, ...userWithoutHash } = user as any;

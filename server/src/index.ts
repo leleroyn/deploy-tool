@@ -40,6 +40,7 @@ try {
   process.exit(1);
 }
 
+app.set('trust proxy', true);
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 

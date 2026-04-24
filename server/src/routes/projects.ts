@@ -34,7 +34,7 @@ router.put('/:name', requireSystemAdmin, async (req: Request, res: Response) => 
   try {
     const user = (req as any).user;
     updateProject(req.params.name, req.body);
-    await auditService.log(user.id, user.username, AuditEventType.SYS_SETTINGS, req.params.name, '成功');
+    await auditService.log(user.id, user.username, AuditEventType.SYS_SETTINGS, req.params.name, '成功', req.ip);
     const project = getProject(req.params.name);
     res.json({ success: true, data: project });
   } catch (err: any) {
@@ -51,7 +51,7 @@ router.post('/', requireSystemAdmin, async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: '项目名称不能为空' });
     }
     addProject(project);
-    await auditService.log(user.id, user.username, 'System Settings', project.name, '成功');
+    await auditService.log(user.id, user.username, AuditEventType.SYS_SETTINGS, project.name, '成功', req.ip);
     res.json({ success: true, data: project });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -63,7 +63,7 @@ router.delete('/:name', requireSystemAdmin, async (req: Request, res: Response) 
   try {
     const user = (req as any).user;
     deleteProject(req.params.name);
-    await auditService.log(user.id, user.username, AuditEventType.SYS_SETTINGS, req.params.name, '成功');
+    await auditService.log(user.id, user.username, AuditEventType.SYS_SETTINGS, req.params.name, '成功', req.ip);
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

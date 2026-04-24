@@ -35,6 +35,7 @@ function App() {
   const checkHealth = useAppStore((s) => s.checkHealth);
   const setUser = useAppStore((s) => s.setUser);
   const [authed, setAuthed] = useState(() => !!getToken());
+  const [loginError, setLoginError] = useState('');
 
   useEffect(() => {
     if (!authed) return;
@@ -69,7 +70,11 @@ function App() {
       if (res.status === 401) {
         const clone = res.clone();
         clone.json().then((data) => {
-          if (data?.error && data.error.includes('未登录')) {
+          if (data?.reason === 'session_revoked') {
+            clearToken();
+            setLoginError('您的账号已在别处登录，请重新登录');
+            setAuthed(false);
+          } else if (data?.error && data.error.includes('未登录')) {
             clearToken();
             setAuthed(false);
           }
@@ -81,7 +86,7 @@ function App() {
   }, []);
 
   if (!authed) {
-    return <LoginPage onLogin={() => setAuthed(true)} />;
+    return <LoginPage onLogin={() => { setAuthed(true); setLoginError(''); }} initialError={loginError} />;
   }
 
   return (

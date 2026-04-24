@@ -28,6 +28,12 @@ script/*.log
 example
 openspec
 
+# 测试
+server/tests
+
+# 运行时数据库（容器内动态生成）
+server/database.sqlite
+
 # 文档
 *.md
 启动说明.md

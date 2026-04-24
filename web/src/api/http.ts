@@ -128,15 +128,16 @@ export const api = {
   getCommandHistory: (count: number = 100) => request<CommandHistory[]>(`/commands/history?count=${count}`),
   
   // 审计日志
-  getAuditLogs: (params: { 
-    username?: string; 
-    eventType?: string; 
-    target?: string; 
-    result?: string; 
-    startTime?: string; 
-    endTime?: string; 
-    page?: number; 
-    limit?: number; 
+  getAuditLogs: (params: {
+    username?: string;
+    eventType?: string;
+    target?: string;
+    result?: string;
+    operatorIp?: string;
+    startTime?: string;
+    endTime?: string;
+    page?: number;
+    limit?: number;
   }) => {
     const query = new URLSearchParams(params as any).toString();
     return request<AuditLog[]>(`/audit/logs?${query}`);

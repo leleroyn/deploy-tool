@@ -4,15 +4,16 @@ import { api, setToken } from '../api/http';
 
 interface LoginPageProps {
   onLogin: () => void;
+  initialError?: string;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, initialError = '' }) => {
   const [step, setStep] = useState<'credentials' | 'otp'>('credentials');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(initialError);
 
   const [otpCode, setOtpCode] = useState('');
   const [tempToken, setTempToken] = useState('');

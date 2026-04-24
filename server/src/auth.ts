@@ -58,7 +58,7 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
   try {
     const session = await verifyTokenWithSession(token);
     if (!session) {
-      res.status(401).json({ success: false, error: '登录已过期，请重新登录' });
+      res.status(401).json({ success: false, error: '您的账号已在别处登录，请重新登录', reason: 'session_revoked' });
       return;
     }
     const user = await userRepository.findById(session.user_id);

@@ -107,6 +107,7 @@ export interface AuditLog {
   event_type: string;
   target: string;
   result: string;
+  operator_ip: string;
   timestamp: string;
 }
 

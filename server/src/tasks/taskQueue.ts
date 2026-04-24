@@ -134,7 +134,8 @@ function processNext() {
         task.operatorName,
         eventTypeMap[task.type] || task.type,
         task.project,
-        status === 'success' ? '成功' : '失败'
+        status === 'success' ? '成功' : '失败',
+        task.operatorIp
       );
 
       runningTaskId = null;
@@ -144,7 +145,7 @@ function processNext() {
   });
 }
 
-export function createTask(type: TaskType, project: string, operatorId: string, operatorName: string, dryRun = false): Task {
+export function createTask(type: TaskType, project: string, operatorId: string, operatorName: string, dryRun = false, operatorIp?: string): Task {
   const task: Task = {
     id: uuidv4(),
     type,
@@ -154,6 +155,7 @@ export function createTask(type: TaskType, project: string, operatorId: string, 
     startTime: new Date().toISOString(),
     operatorId,
     operatorName,
+    operatorIp,
   };
   tasks.set(task.id, task);
   queue.push(task.id);

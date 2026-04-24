@@ -52,6 +52,13 @@ export function initDb() {
     // Column may already exist, ignore error
   }
 
+  // Add operator_ip column if not exists (for existing databases)
+  try {
+    db.exec('ALTER TABLE audit_logs ADD COLUMN operator_ip TEXT DEFAULT ""');
+  } catch {
+    // Column may already exist, ignore error
+  }
+
   // Create sessions table
   db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (

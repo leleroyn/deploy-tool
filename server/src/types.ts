@@ -40,6 +40,7 @@ export interface Task {
   exitCode?: number;
   operatorId: string;
   operatorName: string;
+  operatorIp?: string;
 }
 
 export interface PortStatus {
