@@ -63,7 +63,7 @@ const AuditLogs: React.FC = () => {
           <h2 className="text-[15px] font-semibold text-text-primary">审计日志筛选</h2>
         </div>
 
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="space-y-1.5">
             <label className="block text-xs text-text-secondary">操作人员</label>
             <input
@@ -114,16 +114,6 @@ const AuditLogs: React.FC = () => {
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="block text-xs text-text-secondary">操作员IP</label>
-            <input
-              type="text"
-              value={filters.operatorIp}
-              onChange={(e) => { setFilters({ ...filters, operatorIp: e.target.value }); setPage(1); }}
-              placeholder="IP 地址"
-              className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/60 transition-colors"
-            />
-          </div>
-          <div className="space-y-1.5">
             <label className="block text-xs text-text-secondary">开始时间</label>
             <input
               type="datetime-local"
@@ -171,23 +161,22 @@ const AuditLogs: React.FC = () => {
               <th className="px-6 py-3 font-semibold">事件类型</th>
               <th className="px-6 py-3 font-semibold">操作对象</th>
               <th className="px-6 py-3 font-semibold">操作结果</th>
-              <th className="px-6 py-3 font-semibold">IP 地址</th>
               <th className="px-6 py-3 font-semibold">操作时间</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {loading && logs.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-text-secondary text-sm">
-                  <div className="flex items-center justify-center gap-2">
-                    <Loader size={16} className="animate-spin" />
-                    加载中...
-                  </div>
-                </td>
-              </tr>
-            ) : logs.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-text-secondary text-sm">
+               <td colSpan={6} className="px-6 py-12 text-center text-text-secondary text-sm">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader size={16} className="animate-spin" />
+                      加载中...
+                    </div>
+                  </td>
+                </tr>
+              ) : logs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-text-secondary text-sm">
                   暂无符合条件的审计记录
                 </td>
               </tr>
@@ -203,7 +192,6 @@ const AuditLogs: React.FC = () => {
                   </td>
                   <td className="px-6 py-3 text-sm text-text-primary font-mono">{log.target}</td>
                   <td className={`px-6 py-3 text-sm font-medium ${resultColor(log.result)}`}>{log.result}</td>
-                  <td className="px-6 py-3 text-sm text-text-secondary font-mono">{log.operator_ip || '-'}</td>
                   <td className="px-6 py-3 text-sm text-text-secondary">
                       {(() => {
                         const ts = log.timestamp.replace(' ', 'T') + 'Z';

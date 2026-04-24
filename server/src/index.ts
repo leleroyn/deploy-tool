@@ -58,8 +58,18 @@ app.use((req, _res, next) => {
 });
 
 // 健康检查（不需要登录）
-app.get('/api/health', (_req, res) => {
-  res.json({ success: true, data: { status: 'ok', time: new Date().toISOString() } });
+app.get('/api/health', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      status: 'ok',
+      time: new Date().toISOString(),
+      req_ip: req.ip,
+      remote_addr: req.socket.remoteAddress,
+      xff: req.headers['x-forwarded-for'],
+      xri: req.headers['x-real-ip']
+    }
+  });
 });
 
 // 登录/登出（不需要登录）
