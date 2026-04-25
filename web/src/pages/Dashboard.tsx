@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Rocket, Archive, Radio, RefreshCw, Activity, CheckCircle, XCircle, Clock, Terminal } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
+import { api } from '../api/http';
 import ProjectCard from '../components/ProjectCard';
 import TaskStatusBadge from '../components/TaskStatusBadge';
 import { Task } from '../types';
@@ -17,16 +18,23 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { projects, tasks, loadProjects, loadTasks, checkHealth } = useAppStore();
   const [loading, setLoading] = useState(false);
+  const [taskStats, setTaskStats] = useState<Record<string, number>>({});
 
   useEffect(() => {
     checkHealth();
     loadProjects();
-    loadTasks();
+    loadTasks(1, 10);
+    loadStats();
   }, []);
+
+  const loadStats = async () => {
+    const res = await api.getTaskStats();
+    if (res.success && res.data) setTaskStats(res.data);
+  };
 
   const handleRefresh = async () => {
     setLoading(true);
-    await Promise.all([loadProjects(), loadTasks(), checkHealth()]);
+    await Promise.all([loadProjects(), loadTasks(1, 10), loadStats(), checkHealth()]);
     setLoading(false);
   };
 
@@ -34,9 +42,9 @@ const Dashboard: React.FC = () => {
 
   const stats = {
     total: projects.length,
-    success: tasks.filter(t => t.status === 'success').length,
-    failed: tasks.filter(t => t.status === 'failed').length,
-    running: tasks.filter(t => t.status === 'running').length,
+    success: taskStats['success'] || 0,
+    failed: taskStats['failed'] || 0,
+    running: taskStats['running'] || 0,
   };
 
   return (

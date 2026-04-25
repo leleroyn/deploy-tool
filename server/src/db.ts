@@ -38,6 +38,30 @@ export function initDb() {
   db.exec(`CREATE INDEX IF NOT EXISTS idx_audit_event ON audit_logs(event_type);`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_logs(timestamp);`);
 
+  // Create tasks table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      project TEXT NOT NULL,
+      status TEXT NOT NULL,
+      dry_run INTEGER DEFAULT 0,
+      start_time DATETIME,
+      end_time DATETIME,
+      exit_code INTEGER,
+      operator_id TEXT NOT NULL,
+      operator_name TEXT NOT NULL,
+      operator_ip TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (operator_id) REFERENCES users(id)
+    );
+  `);
+
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at DESC);`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project);`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_type ON tasks(type);`);
+
   // Add avatar column if not exists (for existing databases)
   try {
     db.exec("ALTER TABLE users ADD COLUMN avatar TEXT");

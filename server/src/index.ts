@@ -4,6 +4,7 @@ import http from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { initDb } from './db';
+import { initTaskQueue } from './tasks/taskQueue';
 import { setupWebSocket } from './ws/wsHandler';
 import { authMiddleware, requireSystemAdmin } from './auth';
 import authRouter from './routes/auth';
@@ -37,6 +38,15 @@ try {
   console.log('[Server] Database initialized.');
 } catch (err) {
   console.error('[Server] Database initialization failed:', err);
+  process.exit(1);
+}
+
+// Initialize Task Queue (recover stale tasks)
+try {
+  initTaskQueue();
+  console.log('[Server] Task queue initialized.');
+} catch (err) {
+  console.error('[Server] Task queue initialization failed:', err);
   process.exit(1);
 }
 

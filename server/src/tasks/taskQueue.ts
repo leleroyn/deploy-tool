@@ -3,12 +3,12 @@ import { Task, TaskType, TaskStatus } from '../types';
 import { runScript } from './scriptRunner';
 import { auditService } from '../services/auditService';
 import { AuditEventType } from '../types';
+import { db } from '../db';
 
 export type LogListener = (taskId: string, chunk: string) => void;
 export type StatusListener = (task: Task) => void;
 
-// 限制：最多保留 100 条任务记录，单个任务日志最多 2000 条
-const MAX_TASKS = 100;
+// 单个任务日志最多 2000 条
 const MAX_LOG_ENTRIES = 2000;
 
 const tasks: Map<string, Task> = new Map();
@@ -31,6 +31,84 @@ export function onStatus(listener: StatusListener): () => void {
   return () => statusListeners.delete(listener);
 }
 
+// Database helpers
+function dbInsertTask(id: string, type: string, project: string, status: string, dryRun: number, startTime: string, operatorId: string, operatorName: string, operatorIp: string) {
+  db.prepare(`
+    INSERT INTO tasks (id, type, project, status, dry_run, start_time, operator_id, operator_name, operator_ip)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, type, project, status, dryRun, startTime, operatorId, operatorName, operatorIp);
+}
+
+function dbUpdateTask(id: string, status: string, startTime: string, endTime: string | undefined, exitCode: number | undefined) {
+  db.prepare(`
+    UPDATE tasks SET status = ?, start_time = ?, end_time = ?, exit_code = ? WHERE id = ?
+  `).run(status, startTime, endTime, exitCode, id);
+}
+
+function dbGetAllTasksSql(): Task[] {
+  const rows = db.prepare(`SELECT * FROM tasks ORDER BY created_at DESC`).all();
+  return (rows as any[]).map(taskRowToTask);
+}
+
+function dbGetTaskSql(id: string): Task | undefined {
+  const row = db.prepare(`SELECT * FROM tasks WHERE id = ?`).get(id);
+  return row ? taskRowToTask(row as any) : undefined;
+}
+
+function dbGetTasksPaginatedSql(limit: number, offset: number): { tasks: Task[]; total: number } {
+  const rows = db.prepare(`SELECT * FROM tasks ORDER BY created_at DESC LIMIT ? OFFSET ?`).all(limit, offset);
+  const totalRow = db.prepare(`SELECT COUNT(*) as total FROM tasks`).get();
+  return {
+    tasks: (rows as any[]).map(taskRowToTask),
+    total: (totalRow as any).total,
+  };
+}
+
+function dbRecoverTasksSql() {
+  const stmt = db.prepare(`UPDATE tasks SET status = ?, exit_code = ? WHERE status = ?`);
+  stmt.run('failed', -1, 'running');
+  stmt.run('failed', -2, 'pending');
+}
+
+function taskRowToTask(row: Record<string, any>): Task {
+  return {
+    id: row.id,
+    type: row.type,
+    project: row.project,
+    status: row.status,
+    dryRun: row.dry_run ? true : false,
+    startTime: row.start_time || '',
+    endTime: row.end_time,
+    exitCode: row.exit_code,
+    operatorId: row.operator_id,
+    operatorName: row.operator_name,
+    operatorIp: row.operator_ip,
+  };
+}
+
+export function dbGetAllTasks(): Task[] {
+  return dbGetAllTasksSql();
+}
+
+export function dbGetTask(id: string): Task | undefined {
+  return dbGetTaskSql(id);
+}
+
+export function dbGetTasksPaginated(limit: number, offset: number): { tasks: Task[]; total: number } {
+  return dbGetTasksPaginatedSql(limit, offset);
+}
+
+export function dbRecoverTasks() {
+  dbRecoverTasksSql();
+}
+
+export function dbGetTaskStats(): Record<string, number> {
+  const rows = db.prepare(`SELECT status, COUNT(*) as count FROM tasks GROUP BY status`).all();
+  const stats: Record<string, number> = { pending: 0, running: 0, success: 0, failed: 0 };
+  (rows as any[]).forEach((r: any) => { stats[r.status] = r.count; });
+  return stats;
+}
+
 function emitLog(taskId: string, chunk: string) {
   // 缓冲日志，供后续连接的 WebSocket 回放
   if (!logBuffers.has(taskId)) logBuffers.set(taskId, []);
@@ -49,30 +127,9 @@ function emitStatus(task: Task) {
 function updateTask(task: Task, updates: Partial<Task>): Task {
   const updated = { ...task, ...updates };
   tasks.set(task.id, updated);
+  dbUpdateTask(task.id, updated.status, updated.startTime, updated.endTime, updated.exitCode);
   emitStatus(updated);
   return updated;
-}
-
-// 清理最旧的任务，保留最近 100 条
-function pruneOldTasks() {
-  if (tasks.size <= MAX_TASKS) return;
-
-  const completed: [string, Task][] = [];
-  tasks.forEach((t, id) => {
-    if (t.status === 'success' || t.status === 'failed') {
-      completed.push([id, t]);
-    }
-  });
-
-  // 按开始时间排序，删除最旧的
-  completed.sort((a, b) => new Date(a[1].startTime).getTime() - new Date(b[1].startTime).getTime());
-
-  const toDelete = tasks.size - MAX_TASKS;
-  for (let i = 0; i < toDelete && i < completed.length; i++) {
-    const [id] = completed[i];
-    tasks.delete(id);
-    logBuffers.delete(id);
-  }
 }
 
 function processNext() {
@@ -139,42 +196,42 @@ function processNext() {
       );
 
       runningTaskId = null;
-      pruneOldTasks();
-      processNext();
+       processNext();
     },
   });
 }
 
 export function createTask(type: TaskType, project: string, operatorId: string, operatorName: string, dryRun = false, operatorIp?: string): Task {
+  const now = new Date().toISOString();
   const task: Task = {
     id: uuidv4(),
     type,
     project,
     status: 'pending',
     dryRun,
-    startTime: new Date().toISOString(),
+    startTime: now,
     operatorId,
     operatorName,
     operatorIp,
   };
   tasks.set(task.id, task);
+  dbInsertTask(task.id, type, project, 'pending', dryRun ? 1 : 0, now, operatorId, operatorName, operatorIp || '');
   queue.push(task.id);
   processNext();
   return task;
 }
 
 export function getTask(id: string): Task | undefined {
-  return tasks.get(id);
+  // 先查内存（运行时任务），再查数据库（历史任务）
+  return tasks.get(id) || dbGetTask(id);
+}
+
+export function getAllTasks(): Task[] {
+  return dbGetAllTasks();
 }
 
 export function getLogBuffer(taskId: string): string[] {
   return logBuffers.get(taskId) ?? [];
-}
-
-export function getAllTasks(): Task[] {
-  return Array.from(tasks.values()).sort(
-    (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
-  );
 }
 
 export function isProjectBusy(project: string): boolean {
@@ -188,4 +245,8 @@ export function isProjectBusy(project: string): boolean {
     if (qTask?.project === project || qTask?.project === 'all') return true;
   }
   return false;
+}
+
+export function initTaskQueue() {
+  dbRecoverTasks();
 }

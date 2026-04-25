@@ -20,20 +20,22 @@ const logTypeMap: Record<string, string> = {
 };
 
 const LogsPage: React.FC = () => {
-  const { tasks, loadTasks, user } = useAppStore();
+  const { tasks, taskTotal, loadTasks, user } = useAppStore();
   const [logFiles, setLogFiles] = useState<LogFileMeta[]>([]);
   const [activeLog, setActiveLog] = useState<string | null>(null);
   const [logContent, setLogContent] = useState('');
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const limit = 20;
   // 内联确认：存待删除的 key，避免 iframe 中 window.confirm 被拦截
   const [confirmKey, setConfirmKey] = useState<string | null>(null);
 
   const isSystemAdmin = user?.role === 'system_admin';
 
   useEffect(() => {
-    loadTasks();
+    loadTasks(page, limit);
     loadLogFiles();
-  }, []);
+  }, [page]);
 
 
   const loadLogFiles = async () => {
@@ -70,7 +72,7 @@ const LogsPage: React.FC = () => {
           <span className="w-1 h-4 rounded-full bg-primary-light inline-block" />
           任务记录
           <button
-            onClick={loadTasks}
+            onClick={() => loadTasks(page, limit)}
             className="ml-auto flex items-center gap-1.5 px-2.5 py-1 text-xs text-text-secondary hover:text-text-primary bg-bg-secondary border border-border rounded-lg transition-all"
           >
             <RefreshCw size={11} />
@@ -83,43 +85,69 @@ const LogsPage: React.FC = () => {
             暂无任务记录
           </div>
         ) : (
-          <div className="bg-bg-secondary rounded-xl border border-border overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium">任务 ID</th>
-                  <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium">类型</th>
-                  <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium">项目</th>
-                  <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium">状态</th>
-                  <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium">开始时间</th>
-                  <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium">耗时</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tasks.map((task: Task, idx) => {
-                  const dur = task.endTime
-                    ? Math.round((new Date(task.endTime).getTime() - new Date(task.startTime).getTime()) / 1000)
-                    : null;
-                  return (
-                    <tr key={task.id} className={`border-b border-border/50 hover:bg-bg-tertiary transition-colors ${idx === tasks.length - 1 ? 'border-0' : ''}`}>
-                      <td className="px-4 py-3 text-[11px] font-mono text-text-secondary">{task.id.slice(0, 8)}...</td>
-                      <td className="px-4 py-3 text-xs text-text-muted">
-                        {typeLabel[task.type] || task.type}
-                        {task.dryRun && <span className="ml-1 text-[10px] text-status-warning bg-status-warning/10 px-1 rounded">DRY</span>}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs text-text-primary">{task.project}</td>
-                      <td className="px-4 py-3"><TaskStatusBadge status={task.status} /></td>
-                      <td className="px-4 py-3 text-xs text-text-secondary font-mono">
-                        {new Date(task.startTime).toLocaleString('zh-CN', { hour12: false })}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-text-secondary">
-                        {dur !== null ? `${dur}s` : '-'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div>
+            <div className="bg-bg-secondary rounded-xl border border-border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium">任务 ID</th>
+                    <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium">类型</th>
+                    <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium">项目</th>
+                    <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium">状态</th>
+                    <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium">开始时间</th>
+                    <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium">耗时</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasks.map((task: Task, idx) => {
+                    const dur = task.endTime
+                      ? Math.round((new Date(task.endTime).getTime() - new Date(task.startTime).getTime()) / 1000)
+                      : null;
+                    return (
+                      <tr key={task.id} className={`border-b border-border/50 hover:bg-bg-tertiary transition-colors ${idx === tasks.length - 1 ? 'border-0' : ''}`}>
+                        <td className="px-4 py-3 text-[11px] font-mono text-text-secondary">{task.id.slice(0, 8)}...</td>
+                        <td className="px-4 py-3 text-xs text-text-muted">
+                          {typeLabel[task.type] || task.type}
+                          {task.dryRun && <span className="ml-1 text-[10px] text-status-warning bg-status-warning/10 px-1 rounded">DRY</span>}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-text-primary">{task.project}</td>
+                        <td className="px-4 py-3"><TaskStatusBadge status={task.status} /></td>
+                        <td className="px-4 py-3 text-xs text-text-secondary font-mono">
+                          {new Date(task.startTime).toLocaleString('zh-CN', { hour12: false })}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-text-secondary">
+                          {dur !== null ? `${dur}s` : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {taskTotal > limit && (
+              <div className="flex items-center justify-between mt-3 px-1">
+                <span className="text-xs text-text-secondary">共 {taskTotal} 条记录</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="px-2.5 py-1 text-xs rounded border border-border bg-bg-secondary text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    上一页
+                  </button>
+                  <span className="text-xs text-text-secondary">
+                    第 {page} / {Math.ceil(taskTotal / limit)} 页
+                  </span>
+                  <button
+                    onClick={() => setPage(p => p + 1)}
+                    disabled={page >= Math.ceil(taskTotal / limit) - 1}
+                    className="px-2.5 py-1 text-xs rounded border border-border bg-bg-secondary text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    下一页
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

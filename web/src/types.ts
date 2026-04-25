@@ -47,6 +47,9 @@ export interface Task {
   startTime: string;
   endTime?: string;
   exitCode?: number;
+  operatorId?: string;
+  operatorName?: string;
+  operatorIp?: string;
 }
 
 export interface WsMessage {

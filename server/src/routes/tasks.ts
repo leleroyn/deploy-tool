@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { createTask, getTask, getAllTasks, isProjectBusy } from '../tasks/taskQueue';
+import { createTask, getTask, dbGetTasksPaginated, dbGetTaskStats, isProjectBusy } from '../tasks/taskQueue';
 import { getProjects, getCommand } from '../config/iniManager';
 
 const router = Router();
@@ -81,9 +81,18 @@ router.post('/remote', (req: Request, res: Response) => {
 });
 
 // GET /api/tasks
-router.get('/', (_req: Request, res: Response) => {
-  const tasks = getAllTasks();
-  res.json({ success: true, data: tasks });
+router.get('/', (req: Request, res: Response) => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const offset = (page - 1) * limit;
+  const { tasks, total } = dbGetTasksPaginated(limit, offset);
+  res.json({ success: true, data: { tasks, total } });
+});
+
+// GET /api/tasks/stats (must be before /:id to avoid route conflict)
+router.get('/stats', (_req: Request, res: Response) => {
+  const stats = dbGetTaskStats();
+  res.json({ success: true, data: stats });
 });
 
 // GET /api/tasks/:id

@@ -5,11 +5,12 @@ import { api } from '../api/http';
 interface AppState {
   projects: Project[];
   tasks: Task[];
+  taskTotal: number;
   sshConfig: SSHConfig | null;
   serverOnline: boolean;
   user: any | null;
   loadProjects: () => Promise<void>;
-  loadTasks: () => Promise<void>;
+  loadTasks: (page?: number, limit?: number) => Promise<void>;
   loadSSHConfig: () => Promise<void>;
   checkHealth: () => Promise<void>;
   setUser: (user: any | null) => void;
@@ -19,6 +20,7 @@ interface AppState {
 export const useAppStore = create<AppState>((set, get) => ({
   projects: [],
   tasks: [],
+  taskTotal: 0,
   sshConfig: null,
   serverOnline: false,
   user: null,
@@ -30,10 +32,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  loadTasks: async () => {
-    const res = await api.getTasks();
+  loadTasks: async (page = 1, limit = 20) => {
+    const res = await api.getTasks(page, limit);
     if (res.success && res.data) {
-      set({ tasks: res.data });
+      set({ tasks: res.data.tasks, taskTotal: res.data.total });
     }
   },
 
