@@ -69,6 +69,7 @@ export interface LogFileMeta {
   filename: string;
   size: number;
   lastModified: string | null;
+  archiveCount?: number;
 }
 
 export interface LocalDirFile {

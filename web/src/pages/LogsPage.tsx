@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FileText, Download, Trash2, RefreshCw, AlertTriangle, X } from 'lucide-react';
+import { FileText, Download, Archive, RefreshCw, X } from 'lucide-react';
 import { api } from '../api/http';
 import { useAppStore } from '../store/appStore';
 import TaskStatusBadge from '../components/TaskStatusBadge';
@@ -27,7 +27,7 @@ const LogsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const limit = 20;
-  // 内联确认：存待删除的 key，避免 iframe 中 window.confirm 被拦截
+  // 内联确认：存待归档的 key，避免 iframe 中 window.confirm 被拦截
   const [confirmKey, setConfirmKey] = useState<string | null>(null);
 
   const isSystemAdmin = user?.role === 'system_admin';
@@ -51,8 +51,8 @@ const LogsPage: React.FC = () => {
     setLoading(false);
   };
 
-  const handleClearLog = async (key: string) => {
-    await api.clearLog(key);
+  const handleArchiveLog = async (key: string) => {
+    await api.archiveLog(key);
     if (activeLog === key) setLogContent('');
     setConfirmKey(null);
     loadLogFiles();
@@ -178,10 +178,10 @@ const LogsPage: React.FC = () => {
                     {isSystemAdmin && (
                       <button
                         onClick={() => setConfirmKey(file.key)}
-                        className="p-1 rounded text-text-secondary hover:text-status-error hover:bg-status-error/10 transition-all"
-                        title="清空日志内容"
+                        className="p-1 rounded text-text-secondary hover:text-primary-light hover:bg-primary/10 transition-all"
+                        title="归档日志"
                       >
-                        <Trash2 size={13} />
+                        <Archive size={13} />
                       </button>
                     )}
                   </div>
@@ -189,7 +189,10 @@ const LogsPage: React.FC = () => {
               </div>
               <p className="text-xs font-mono text-text-secondary">{file.filename}</p>
               <div className="flex items-center justify-between mt-2 text-[11px] text-text-secondary">
-                <span>{formatSize(file.size)}</span>
+                <div className="flex items-center gap-2">
+                  <span>{formatSize(file.size)}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-bg-tertiary">归档: {file.archiveCount ?? 0} 份</span>
+                </div>
                 {file.lastModified && (
                   <span>{new Date(file.lastModified).toLocaleDateString('zh-CN')}</span>
                 )}
@@ -197,12 +200,12 @@ const LogsPage: React.FC = () => {
 
               {/* 内联确认 */}
               {confirmKey === file.key && (
-                <div className="mt-3 pt-3 border-t border-status-error/30 flex items-center gap-2">
-                  <AlertTriangle size={13} className="text-status-error flex-shrink-0" />
-                  <span className="text-xs text-status-error flex-1">确认清空日志内容？</span>
+                <div className="mt-3 pt-3 border-t border-primary/30 flex items-center gap-2">
+                  <Archive size={13} className="text-primary-light flex-shrink-0" />
+                  <span className="text-xs text-primary-light flex-1">确认归档日志？归档后将清空当前日志内容</span>
                   <button
-                    onClick={() => handleClearLog(file.key)}
-                    className="px-2.5 py-1 text-xs rounded bg-status-error text-white hover:bg-status-error/80 transition-colors"
+                    onClick={() => handleArchiveLog(file.key)}
+                    className="px-2.5 py-1 text-xs rounded bg-primary text-white hover:bg-primary/80 transition-colors"
                   >
                     确认
                   </button>

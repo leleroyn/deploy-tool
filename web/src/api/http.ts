@@ -88,7 +88,8 @@ export const api = {
   // 日志
   getLogFiles: () => request<LogFileMeta[]>('/logs/files'),
   getLog: (type: string) => request<string>(`/logs/${type}`),
-  clearLog: (type: string) => request(`/logs/${type}`, { method: 'DELETE' }),
+  archiveLog: (type: string) => request(`/logs/${type}`, { method: 'DELETE' }),
+  getLogArchives: (type: string) => request<Array<{ filename: string; size: number; createdAt: string }>>(`/logs/${type}/archives`),
   
   // 健康检查
   health: () => request<{ status: string }>('/health'),
