@@ -33,7 +33,8 @@ Deploy Tool 为一套完整的 **Web 管理平台**，核心理念是：
 | 📦 **部署包上传**       | 支持拖拽上传 `.zip` / `.tar.gz` / `.tar`，压缩包自动解压；支持直接上传 `.jar` 等任意格式 |
 | 🌐 **多服务器支持**      | 单个项目可配置多台服务器，一次操作按顺序覆盖所有节点                                     |
 | ⏱️ **任务队列**        | 同一时间只允许一个任务运行，避免并发冲突，最多保留 100 条任务记录                            |
-| 🔧 **远程维护**        | 预置运维命令分组管理，支持二次确认执行、执行记录展示、实时日志输出                              |
+| 🔧 **远程维护**        | 预置运维命令分组管理，支持二次确认执行、执行记录展示、实时日志输出；支持基于角色的权限控制，可限制命令执行范围                              |
+| 🔐 **命令权限控制**    | 在 config.toml 中为命令配置 `allowed_roles`，精确控制 system_admin / ops_admin 可执行范围，脚本内容对 ops_admin 隐藏      |
 | ⚙️ **在线配置编辑**      | 通过 Web 设置页直接编辑 `config.toml`，无需登录服务器                           |
 | 🐳 **Docker 一键部署** | 多阶段 Dockerfile 构建，单容器单端口，开箱即用                                  |
 | 🔑 **Session 认证**    | 初始密码通过环境变量配置，有状态 Session Token 认证                                    |
@@ -147,8 +148,31 @@ Deploy Tool 为一套完整的 **Web 管理平台**，核心理念是：
 ### 远程维护流程
 
 ```
-点击执行 → 二次确认 → 创建任务 → SSH执行命令 → 实时日志输出 → 记录历史
+点击执行 → 权限校验 → 二次确认 → 创建任务 → SSH执行命令 → 实时日志输出 → 记录历史
 ```
+
+### 命令权限控制
+
+在 `config.toml` 的 `[command."xxx"]` 节中可配置 `allowed_roles` 字段，精确控制哪些角色可以执行该命令：
+
+```toml
+[command."备份Mysql数据库"]
+server = ["192.168.2.228"]
+command = "docker --version"
+group = "备份数据库"
+allowed_roles = ["system_admin", "ops_admin"]
+
+[command."自定义脚本1"]
+server = ["192.168.2.228"]
+command = "bash /root/a.shell"
+group = "备份数据库"
+allowed_roles = ["system_admin"]
+```
+
+**行为说明：**
+- 不配置 `allowed_roles` 时，所有角色均可执行（向后兼容）
+- `ops_admin` 执行命令时，前端不显示脚本内容（安全考虑）
+- `system_admin` 可在命令卡片上看到权限徽标，清晰了解各命令的访问范围
 
 ---
 
@@ -213,7 +237,7 @@ docker run -d \
   -v "$(pwd)/script:/app/script:ro" \
   -v "/root/.ssh:/root/.ssh:ro" \
   -v "$(pwd)/logs:/app/logs" \
-  leleroyn/deploy-tool:0.1.5
+  leleroyn/deploy-tool:0.3.4
 ```
 
 **浏览器访问：** `http://服务器IP:3001`
@@ -259,6 +283,7 @@ cd web && npm install && npm run dev      # 端口 5173
 | `server`  | ✅   | 目标服务器 IP 数组             |
 | `command` | ✅   | 要执行的远程命令                |
 | `group`   | ❌   | 命令分组名称，用于前端分类展示，默认"未分组" |
+| `allowed_roles` | ❌ | 允许执行该命令的角色数组，如 `["system_admin"]` 或 `["system_admin", "ops_admin"]`，缺省时全员可执行 |
 
 ### 环境变量
 
