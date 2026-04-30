@@ -24,6 +24,7 @@ interface RawConfig {
     server?: string[];
     command?: string;
     group?: string;
+    allowed_roles?: string | string[];
   }>;
 }
 
@@ -167,6 +168,13 @@ export interface RemoteCommand {
   server: string[];
   command: string;
   group: string;
+  allowedRoles: string[];
+}
+
+function parseAllowedRoles(raw?: string | string[]): string[] {
+  if (!raw) return ['system_admin', 'ops_admin'];
+  if (Array.isArray(raw)) return raw;
+  return [raw];
 }
 
 export function getCommands(): RemoteCommand[] {
@@ -179,6 +187,7 @@ export function getCommands(): RemoteCommand[] {
       server: sec.server || [],
       command: sec.command || '',
       group: sec.group || '未分组',
+      allowedRoles: parseAllowedRoles(sec.allowed_roles),
     };
   });
 }
@@ -192,6 +201,7 @@ export function getCommand(name: string): RemoteCommand | null {
     server: sec.server || [],
     command: sec.command || '',
     group: sec.group || '未分组',
+    allowedRoles: parseAllowedRoles(sec.allowed_roles),
   };
 }
 

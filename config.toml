@@ -33,8 +33,10 @@ bind-port = [ 8_501 ]
 server = [ "192.168.2.228" ]
 command = "docker --version"
 group = "备份数据库"
+allowed_roles = [ "system_admin", "ops_admin" ]
 
 [command."自定义脚本1"]
 server = [ "192.168.2.228" ]
 command = "bash /root/a.shell"
 group = "备份数据库"
+allowed_roles = [ "system_admin" ]

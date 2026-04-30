@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, Play, Loader2, Clock, AlertTriangle, X } from 'lucide-react';
+import { Terminal, Play, Loader2, Clock, AlertTriangle, X, Shield } from 'lucide-react';
 import { api } from '../api/http';
 import { createTaskWs } from '../api/ws';
-import { GroupedCommands, CommandHistory, Task, TaskStatus } from '../types';
+import { GroupedCommands, CommandHistory, Task, TaskStatus, User } from '../types';
 
 interface CommandHistoryMap {
   [commandName: string]: CommandHistory[];
@@ -18,11 +18,13 @@ const RemoteMaintenancePage: React.FC = () => {
    const [isExecuting, setIsExecuting] = useState(false);
    const [terminalOutput, setTerminalOutput] = useState('');
    const [showResults, setShowResults] = useState(false);
+   const [currentUser, setCurrentUser] = useState<User | null>(null);
    const terminalRef = useRef<HTMLPreElement>(null);
    const wsCloseRef = useRef<(() => void) | null>(null);
 
 
   useEffect(() => {
+    loadCurrentUser();
     loadCommands();
     loadHistory();
   }, []);
@@ -32,6 +34,13 @@ const RemoteMaintenancePage: React.FC = () => {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
   }, [terminalOutput]);
+
+  const loadCurrentUser = async () => {
+    const res = await api.me();
+    if (res.success && res.data) {
+      setCurrentUser(res.data);
+    }
+  };
 
   const loadCommands = async () => {
     setLoading(true);
@@ -166,11 +175,23 @@ const RemoteMaintenancePage: React.FC = () => {
                 className="bg-bg-tertiary border border-border rounded-lg p-4 hover:border-primary/30 transition-colors"
               >
                 <div className="flex items-start justify-between mb-3">
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-medium text-text-primary">{cmd.name}</h3>
-                    <p className="text-xs text-text-secondary mt-1 break-all" title={cmd.command}>
-                      {cmd.command}
-                    </p>
+                    {currentUser?.role === 'system_admin' && cmd.command && (
+                      <p className="text-xs text-text-secondary mt-1 break-all truncate" title={cmd.command}>
+                        {cmd.command}
+                      </p>
+                    )}
+                    {currentUser?.role === 'system_admin' && cmd.allowedRoles && cmd.allowedRoles.length > 0 && (
+                      <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                        <Shield size={10} />
+                        {cmd.allowedRoles.includes('system_admin') && cmd.allowedRoles.includes('ops_admin')
+                          ? '允许所有角色'
+                          : cmd.allowedRoles.length === 1 && cmd.allowedRoles[0] === 'system_admin'
+                            ? '仅 system_admin'
+                            : cmd.allowedRoles.join(', ')}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -202,24 +223,31 @@ const RemoteMaintenancePage: React.FC = () => {
                   <span className="text-xs text-text-tertiary">
                     服务器: {cmd.server.join(', ')}
                   </span>
-                   <button
-                     onClick={() => setConfirmKey(cmd.name)}
-                     disabled={isSubmitting || runningTask?.project === cmd.name}
-                     className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-all disabled:opacity-40"
-                   >
-                     {isSubmitting || runningTask?.project === cmd.name ? (
-                       <Loader2 size={12} className="animate-spin" />
-                     ) : (
-                       <Play size={12} />
-                     )}
-                     执行
-                   </button>
+{currentUser && cmd.allowedRoles && !cmd.allowedRoles.includes(currentUser.role) ? (
+                    <span className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-bg-secondary text-text-tertiary text-xs font-medium">
+                      <Shield size={12} />
+                      权限不足
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmKey(cmd.name)}
+                      disabled={isSubmitting || runningTask?.project === cmd.name}
+                      className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-all disabled:opacity-40"
+                    >
+                      {isSubmitting || runningTask?.project === cmd.name ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <Play size={12} />
+                      )}
+                      执行
+                    </button>
+                  )}
 
 
                 </div>
 
                 {/* 内联确认（参考日志历史） */}
-                {confirmKey === cmd.name && (
+                {confirmKey === cmd.name && currentUser && cmd.allowedRoles && cmd.allowedRoles.includes(currentUser.role) && (
                   <div className="mt-3 pt-3 border-t border-status-error/30 flex items-center gap-2">
                     <AlertTriangle size={13} className="text-status-error flex-shrink-0" />
                     <span className="text-xs text-status-error flex-1">确认执行此命令？</span>

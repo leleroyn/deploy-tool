@@ -102,6 +102,7 @@ export interface RemoteCommand {
   server: string[];
   command: string;
   group: string;
+  allowedRoles?: string[];
 }
 
 export interface AuditLog {

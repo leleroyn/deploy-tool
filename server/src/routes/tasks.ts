@@ -73,6 +73,9 @@ router.post('/remote', (req: Request, res: Response) => {
   if (!cmd) {
     return res.status(404).json({ success: false, error: '命令不存在' });
   }
+  if (!cmd.allowedRoles.includes(user.role)) {
+    return res.status(403).json({ success: false, error: '权限不足，无法执行此命令' });
+  }
   if (isProjectBusy(commandName)) {
     return res.status(409).json({ success: false, error: '该命令正在执行中，请稍后再试' });
   }

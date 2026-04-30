@@ -1,21 +1,33 @@
 import { Router, Request, Response } from 'express';
-import { getCommands, getCommand, getCommandHistory } from '../config/iniManager';
+import { getCommands, getCommand, getCommandHistory, RemoteCommand } from '../config/iniManager';
 import { createTask, isProjectBusy } from '../tasks/taskQueue';
-import { requireSystemAdmin } from '../auth';
 
 const router = Router();
 
-router.get('/', (_req: Request, res: Response) => {
+function checkCommandAccess(user: { role: string }, cmd: RemoteCommand): boolean {
+  return cmd.allowedRoles.includes(user.role);
+}
+
+router.get('/', (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
     const commands = getCommands();
-    const grouped: Record<string, typeof commands> = {};
+    const grouped: Record<string, { name: string; server: string[]; command: string; group: string; allowedRoles: string[] }[]> = {};
 
     commands.forEach(cmd => {
       const group = cmd.group || '未分组';
       if (!grouped[group]) {
         grouped[group] = [];
       }
-      grouped[group].push(cmd);
+
+      const isAdmin = user?.role === 'system_admin';
+      grouped[group].push({
+        name: cmd.name,
+        server: cmd.server,
+        command: isAdmin ? cmd.command : '',
+        group: cmd.group,
+        allowedRoles: cmd.allowedRoles,
+      });
     });
 
     res.json({ success: true, data: grouped });
@@ -33,7 +45,7 @@ router.get('/history', (_req: Request, res: Response) => {
   }
 });
 
-router.post('/:name/exec', requireSystemAdmin, async (req: Request, res: Response) => {
+router.post('/:name/exec', async (req: Request, res: Response) => {
   const { name } = req.params;
   
   try {
@@ -41,6 +53,10 @@ router.post('/:name/exec', requireSystemAdmin, async (req: Request, res: Respons
     const cmd = getCommand(name);
     if (!cmd) {
       return res.status(404).json({ success: false, error: '命令不存在' });
+    }
+    
+    if (!checkCommandAccess(user, cmd)) {
+      return res.status(403).json({ success: false, error: '权限不足，无法执行此命令' });
     }
     
     if (!cmd.server || cmd.server.length === 0) {
