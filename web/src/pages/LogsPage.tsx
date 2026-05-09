@@ -26,7 +26,7 @@ const LogsPage: React.FC = () => {
   const [logContent, setLogContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const limit = 20;
+  const limit = 10;
   // 内联确认：存待归档的 key，避免 iframe 中 window.confirm 被拦截
   const [confirmKey, setConfirmKey] = useState<string | null>(null);
 
@@ -90,7 +90,7 @@ const LogsPage: React.FC = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium">任务 ID</th>
+                    <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium w-16">序号</th>
                     <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium">类型</th>
                     <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium">项目</th>
                     <th className="text-left px-4 py-3 text-xs text-text-secondary font-medium">状态</th>
@@ -105,7 +105,7 @@ const LogsPage: React.FC = () => {
                       : null;
                     return (
                       <tr key={task.id} className={`border-b border-border/50 hover:bg-bg-tertiary transition-colors ${idx === tasks.length - 1 ? 'border-0' : ''}`}>
-                        <td className="px-4 py-3 text-[11px] font-mono text-text-secondary">{task.id.slice(0, 8)}...</td>
+                        <td className="px-4 py-3 text-xs text-text-secondary font-mono text-center">{(page - 1) * limit + idx + 1}</td>
                         <td className="px-4 py-3 text-xs text-text-muted">
                           {typeLabel[task.type] || task.type}
                           {task.dryRun && <span className="ml-1 text-[10px] text-status-warning bg-status-warning/10 px-1 rounded">DRY</span>}
@@ -140,7 +140,7 @@ const LogsPage: React.FC = () => {
                   </span>
                   <button
                     onClick={() => setPage(p => p + 1)}
-                    disabled={page >= Math.ceil(taskTotal / limit) - 1}
+                    disabled={page >= Math.ceil(taskTotal / limit)}
                     className="px-2.5 py-1 text-xs rounded border border-border bg-bg-secondary text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                   >
                     下一页

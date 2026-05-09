@@ -70,7 +70,7 @@ export const api = {
     request(`/projects/${name}`, { method: 'DELETE' }),
   
   // 任务
-  getTasks: (page = 1, limit = 20) => request<{ tasks: Task[]; total: number }>(`/tasks?page=${page}&limit=${limit}`),
+  getTasks: (page = 1, limit = 10) => request<{ tasks: Task[]; total: number }>(`/tasks?page=${page}&limit=${limit}`),
   getTaskStats: () => request<Record<string, number>>('/tasks/stats'),
   getTask: (id: string) => request<Task>(`/tasks/${id}`),
   deploy: (project: string, dryRun = false) =>

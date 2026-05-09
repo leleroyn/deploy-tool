@@ -182,16 +182,20 @@ const RemoteMaintenancePage: React.FC = () => {
                         {cmd.command}
                       </p>
                     )}
-                    {currentUser?.role === 'system_admin' && cmd.allowedRoles && cmd.allowedRoles.length > 0 && (
-                      <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                        <Shield size={10} />
-                        {cmd.allowedRoles.includes('system_admin') && cmd.allowedRoles.includes('ops_admin')
-                          ? '允许所有角色'
-                          : cmd.allowedRoles.length === 1 && cmd.allowedRoles[0] === 'system_admin'
-                            ? '仅 system_admin'
-                            : cmd.allowedRoles.join(', ')}
-                      </span>
-                    )}
+                    {currentUser?.role === 'system_admin' && cmd.allowedRoles && cmd.allowedRoles.length > 0 && (() => {
+                      const isAllRoles = cmd.allowedRoles.includes('system_admin') && cmd.allowedRoles.includes('ops_admin');
+                      const label = isAllRoles
+                        ? '允许所有角色'
+                        : cmd.allowedRoles.length === 1 && cmd.allowedRoles[0] === 'system_admin'
+                          ? '仅 system_admin'
+                          : cmd.allowedRoles.join(', ');
+                      return (
+                        <span className={`inline-flex items-center gap-1 mt-1.5 text-[10px] px-1.5 py-0.5 rounded ${isAllRoles ? 'bg-status-warning/10 text-status-warning' : 'bg-primary/10 text-primary'}`}>
+                          {isAllRoles ? <AlertTriangle size={10} /> : <Shield size={10} />}
+                          {label}
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
 

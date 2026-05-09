@@ -32,7 +32,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  loadTasks: async (page = 1, limit = 20) => {
+  loadTasks: async (page = 1, limit = 10) => {
     const res = await api.getTasks(page, limit);
     if (res.success && res.data) {
       set({ tasks: res.data.tasks, taskTotal: res.data.total });
