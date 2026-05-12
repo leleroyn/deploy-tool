@@ -1,0 +1,283 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1778295349295,
+  "projectRoot": "F:\\软件项目\\deploy-tool",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {
+      "dev:server": "cd server && npm run dev",
+      "dev:web": "cd web && npm run dev",
+      "install:all": "cd server && npm install && cd ../web && npm install",
+      "build:server": "cd server && npm run build",
+      "build:web": "cd web && npm run build",
+      "start:server": "cd server && npm start"
+    }
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "example": {
+      "path": "example",
+      "purpose": null,
+      "fileCount": 6,
+      "lastAccessed": 1778295349180,
+      "keyFiles": [
+        "1.png",
+        "2.png",
+        "3.png",
+        "4.png",
+        "5.png"
+      ]
+    },
+    "openspec": {
+      "path": "openspec",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1778295349182,
+      "keyFiles": [
+        "config.yaml"
+      ]
+    },
+    "script": {
+      "path": "script",
+      "purpose": null,
+      "fileCount": 6,
+      "lastAccessed": 1778295349193,
+      "keyFiles": [
+        "backup_pj.sh",
+        "check_ports.sh",
+        "deploy-tool-ui.sh",
+        "deploy.sh",
+        "exec_remote_script.sh"
+      ]
+    },
+    "server": {
+      "path": "server",
+      "purpose": null,
+      "fileCount": 6,
+      "lastAccessed": 1778295349194,
+      "keyFiles": [
+        "database.sqlite",
+        "package-lock.json",
+        "package.json",
+        "start.err.log",
+        "start.log"
+      ]
+    },
+    "web": {
+      "path": "web",
+      "purpose": null,
+      "fileCount": 12,
+      "lastAccessed": 1778295349194,
+      "keyFiles": [
+        "eslint.config.js",
+        "index.html",
+        "package-lock.json",
+        "package.json",
+        "postcss.config.js"
+      ]
+    },
+    "server\\dist": {
+      "path": "server\\dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 6,
+      "lastAccessed": 1778295349195,
+      "keyFiles": [
+        "auth.js",
+        "db.js",
+        "index.js"
+      ]
+    },
+    "server\\node_modules": {
+      "path": "server\\node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 1,
+      "lastAccessed": 1778295349195,
+      "keyFiles": []
+    },
+    "server\\public": {
+      "path": "server\\public",
+      "purpose": "Public files",
+      "fileCount": 2,
+      "lastAccessed": 1778295349196,
+      "keyFiles": [
+        "index.html",
+        "vite.svg"
+      ]
+    },
+    "server\\src": {
+      "path": "server\\src",
+      "purpose": "Source code",
+      "fileCount": 6,
+      "lastAccessed": 1778295349196,
+      "keyFiles": [
+        "auth.ts",
+        "db.ts",
+        "index.ts"
+      ]
+    },
+    "server\\tests": {
+      "path": "server\\tests",
+      "purpose": "Test files",
+      "fileCount": 1,
+      "lastAccessed": 1778295349197,
+      "keyFiles": [
+        "verify.ts"
+      ]
+    },
+    "web\\dist": {
+      "path": "web\\dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 2,
+      "lastAccessed": 1778295349197,
+      "keyFiles": [
+        "index.html",
+        "vite.svg"
+      ]
+    },
+    "web\\node_modules": {
+      "path": "web\\node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 1,
+      "lastAccessed": 1778295349198,
+      "keyFiles": []
+    },
+    "web\\public": {
+      "path": "web\\public",
+      "purpose": "Public files",
+      "fileCount": 1,
+      "lastAccessed": 1778295349198,
+      "keyFiles": [
+        "vite.svg"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "web\\src\\pages\\RemoteMaintenancePage.tsx",
+      "accessCount": 6,
+      "lastAccessed": 1778306746562,
+      "type": "file"
+    },
+    {
+      "path": "web\\src\\pages\\LogsPage.tsx",
+      "accessCount": 5,
+      "lastAccessed": 1778306601092,
+      "type": "file"
+    },
+    {
+      "path": "openspec\\changes\\log-history-and-remote-auth-ui-improvements\\tasks.md",
+      "accessCount": 5,
+      "lastAccessed": 1778306772594,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 3,
+      "lastAccessed": 1778306132916,
+      "type": "directory"
+    },
+    {
+      "path": "openspec\\changes\\log-history-and-remote-auth-ui-improvements\\proposal.md",
+      "accessCount": 3,
+      "lastAccessed": 1778306485035,
+      "type": "file"
+    },
+    {
+      "path": "openspec\\changes\\log-history-and-remote-auth-ui-improvements\\design.md",
+      "accessCount": 3,
+      "lastAccessed": 1778306486185,
+      "type": "file"
+    },
+    {
+      "path": "web\\src\\store\\appStore.ts",
+      "accessCount": 3,
+      "lastAccessed": 1778306574015,
+      "type": "file"
+    },
+    {
+      "path": "server\\src\\routes\\tasks.ts",
+      "accessCount": 2,
+      "lastAccessed": 1778306560642,
+      "type": "file"
+    },
+    {
+      "path": "web\\src\\api\\http.ts",
+      "accessCount": 2,
+      "lastAccessed": 1778306572407,
+      "type": "file"
+    },
+    {
+      "path": "server\\src\\routes\\commands.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778306154210,
+      "type": "file"
+    },
+    {
+      "path": "server\\src\\config\\iniManager.ts",
+      "accessCount": 1,
+      "lastAccessed": 1778306155437,
+      "type": "file"
+    },
+    {
+      "path": "openspec\\specs\\task-persistence\\spec.md",
+      "accessCount": 1,
+      "lastAccessed": 1778306284841,
+      "type": "file"
+    },
+    {
+      "path": "openspec\\specs\\remote-command\\spec.md",
+      "accessCount": 1,
+      "lastAccessed": 1778306285007,
+      "type": "file"
+    },
+    {
+      "path": "openspec\\changes\\log-history-and-remote-auth-ui-improvements\\specs\\task-persistence\\spec.md",
+      "accessCount": 1,
+      "lastAccessed": 1778306320876,
+      "type": "file"
+    },
+    {
+      "path": "openspec\\changes\\log-history-and-remote-auth-ui-improvements\\specs\\remote-command\\spec.md",
+      "accessCount": 1,
+      "lastAccessed": 1778306322633,
+      "type": "file"
+    },
+    {
+      "path": "web\\src",
+      "accessCount": 1,
+      "lastAccessed": 1778306728538,
+      "type": "directory"
+    }
+  ],
+  "userDirectives": []
+}
