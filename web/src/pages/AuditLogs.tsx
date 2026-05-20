@@ -5,9 +5,10 @@ import { AuditLog, AuditEventType } from '../types';
 
 const AuditLogs: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const limit = 20;
+  const limit = 10;
   
   const [filters, setFilters] = useState({
     username: '',
@@ -27,7 +28,8 @@ const AuditLogs: React.FC = () => {
       limit,
     });
     if (res.success) {
-      setLogs(res.data || []);
+      setLogs(res.data?.logs || []);
+      setTotal(res.data?.total || 0);
     }
     setLoading(false);
   }, [filters, page]);
@@ -204,30 +206,32 @@ const AuditLogs: React.FC = () => {
           </tbody>
         </table>
 
-        <div className="px-6 py-4 border-t flex items-center justify-between bg-bg-tertiary/20">
-          <span className="text-xs text-text-secondary">
-            共 {logs.length} 条记录 (当前页)
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              disabled={page === 1 || loading}
-              onClick={() => setPage(p => p - 1)}
-              className="px-3 py-1 text-xs rounded border border-border bg-white hover:bg-bg-tertiary disabled:opacity-50 transition-all"
-            >
-              上一页
-            </button>
-            <span className="text-xs text-text-primary px-2">
-              第 {page} 页
+        {total > limit && (
+          <div className="px-6 py-4 border-t flex items-center justify-between bg-bg-tertiary/20">
+            <span className="text-xs text-text-secondary">
+              共 {total} 条记录
             </span>
-            <button
-              disabled={logs.length < limit || loading}
-              onClick={() => setPage(p => p + 1)}
-              className="px-3 py-1 text-xs rounded border border-border bg-white hover:bg-bg-tertiary disabled:opacity-50 transition-all"
-            >
-              下一页
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={page <= 1 || loading}
+                onClick={() => setPage(p => p - 1)}
+                className="px-3 py-1 text-xs rounded border border-border bg-white hover:bg-bg-tertiary disabled:opacity-50 transition-all"
+              >
+                上一页
+              </button>
+              <span className="text-xs text-text-primary px-2">
+                第 {page} / {Math.ceil(total / limit)} 页
+              </span>
+              <button
+                disabled={page >= Math.ceil(total / limit) || loading}
+                onClick={() => setPage(p => p + 1)}
+                className="px-3 py-1 text-xs rounded border border-border bg-white hover:bg-bg-tertiary disabled:opacity-50 transition-all"
+              >
+                下一页
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

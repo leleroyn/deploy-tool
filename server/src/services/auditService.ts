@@ -12,8 +12,12 @@ export class AuditService {
     });
   }
 
-  async getLogs(filter: AuditFilter): Promise<AuditLog[]> {
-    return await auditRepository.find(filter);
+  async getLogs(filter: AuditFilter): Promise<{ logs: AuditLog[]; total: number }> {
+    const [logs, total] = await Promise.all([
+      auditRepository.find(filter),
+      auditRepository.count(filter),
+    ]);
+    return { logs, total };
   }
 }
 

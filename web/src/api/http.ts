@@ -142,6 +142,6 @@ export const api = {
     limit?: number;
   }) => {
     const query = new URLSearchParams(params as any).toString();
-    return request<AuditLog[]>(`/audit/logs?${query}`);
+    return request<{ logs: AuditLog[]; total: number }>(`/audit/logs?${query}`);
   },
 };

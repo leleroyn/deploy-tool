@@ -26,12 +26,12 @@ router.get('/logs', async (req: Request, res: Response) => {
       operatorIp: operatorIp as string,
       startTime: startTime as string,
       endTime: endTime as string,
-      limit: limit ? parseInt(limit) : 20,
-      offset: page ? (parseInt(page) - 1) * (limit ? parseInt(limit) : 20) : 0
+      limit: limit ? parseInt(limit) : 10,
+      offset: page ? (parseInt(page) - 1) * (limit ? parseInt(limit) : 10) : 0
     };
 
-    const logs = await auditService.getLogs(filter);
-    res.json({ success: true, data: logs });
+    const auditResult = await auditService.getLogs(filter);
+    res.json({ success: true, data: auditResult });
   } catch (err: any) {
     res.status(500).json({ success: false, error: '获取审计日志出错' });
   }

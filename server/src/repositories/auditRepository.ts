@@ -34,10 +34,9 @@ export class AuditRepository {
     stmt.run(id, log.operator_id, log.operator_name, log.event_type, log.target, log.result, log.operator_ip || '');
   }
 
-  async find(filter: AuditFilter): Promise<AuditLog[]> {
-    let query = 'SELECT * FROM audit_logs';
-    const params: any[] = [];
+  private buildWhere(filter: AuditFilter): { clauses: string[]; params: any[] } {
     const whereClauses: string[] = [];
+    const params: any[] = [];
 
     if (filter.username) {
       whereClauses.push('operator_name = ?');
@@ -68,18 +67,37 @@ export class AuditRepository {
       params.push(filter.endTime);
     }
 
-    if (whereClauses.length > 0) {
-      query += ' WHERE ' + whereClauses.join(' AND ');
+    return { clauses: whereClauses, params };
+  }
+
+  async find(filter: AuditFilter): Promise<AuditLog[]> {
+    let query = 'SELECT * FROM audit_logs';
+    const { clauses, params } = this.buildWhere(filter);
+
+    if (clauses.length > 0) {
+      query += ' WHERE ' + clauses.join(' AND ');
     }
 
     query += ' ORDER BY timestamp DESC';
 
-    const limit = filter.limit || 20;
+    const limit = filter.limit || 10;
     const offset = filter.offset || 0;
     query += ' LIMIT ? OFFSET ?';
     params.push(limit, offset);
 
     return db.prepare(query).all(...params) as AuditLog[];
+  }
+
+  async count(filter: AuditFilter): Promise<number> {
+    let query = 'SELECT COUNT(*) as total FROM audit_logs';
+    const { clauses, params } = this.buildWhere(filter);
+
+    if (clauses.length > 0) {
+      query += ' WHERE ' + clauses.join(' AND ');
+    }
+
+    const result = db.prepare(query).get(...params) as any;
+    return result.total;
   }
 }
 
