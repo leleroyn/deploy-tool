@@ -2,9 +2,7 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [master]
-    tags: ['v*']
-  workflow_dispatch:
+    tags: ['[0-9]*']
 
 env:
   REGISTRY: ghcr.io
@@ -37,11 +35,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            # Tag on push to master
-            type=raw,value=latest,enable={{is_default_branch}}
-            # Tag on commit SHA
-            type=sha,prefix=,enable={{is_default_branch}}
-            # Tag on git tag (e.g., v0.3.5)
+            # latest tag for the most recent release
+            type=raw,value=latest
+            # semver tags: 0.3.5 -> 0.3.5, 0.3
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
 
