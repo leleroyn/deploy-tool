@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { getCommands, getCommand, getCommandHistory, RemoteCommand } from '../config/iniManager';
+import { getCommands, getCommand, RemoteCommand } from '../config/iniManager';
 import { createTask, isProjectBusy } from '../tasks/taskQueue';
+import { auditRepository } from '../repositories/auditRepository';
+import { AuditEventType } from '../types';
 
 const router = Router();
 
@@ -36,9 +38,29 @@ router.get('/', (req: Request, res: Response) => {
   }
 });
 
-router.get('/history', (_req: Request, res: Response) => {
+router.get('/history', async (_req: Request, res: Response) => {
   try {
-    const history = getCommandHistory(3);
+    const logs = await auditRepository.find({
+      eventType: AuditEventType.REMOTE_CMD,
+      limit: 100,
+      offset: 0,
+    });
+
+    const grouped: Record<string, typeof logs> = {};
+    for (const log of logs) {
+      if (!grouped[log.target]) grouped[log.target] = [];
+      if (grouped[log.target].length < 3) {
+        grouped[log.target].push(log);
+      }
+    }
+
+    const history = Object.values(grouped).flat().map((log) => ({
+      commandName: log.target,
+      server: '',
+      status: log.result === '成功' ? 'success' : 'error',
+      time: log.timestamp,
+    }));
+
     res.json({ success: true, data: history });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

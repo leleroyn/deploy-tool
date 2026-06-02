@@ -204,35 +204,3 @@ export function getCommand(name: string): RemoteCommand | null {
     allowedRoles: parseAllowedRoles(sec.allowed_roles),
   };
 }
-
-export interface CommandHistory {
-  commandName: string;
-  server: string;
-  status: 'success' | 'error';
-  time: string;
-}
-
-export function getCommandHistory(count: number = 3): CommandHistory[] {
-  const logFile = path.join(getLogDir(), 'exec_remote_script.log');
-  if (!fs.existsSync(logFile)) return [];
-
-  const content = fs.readFileSync(logFile, 'utf-8');
-  const lines = content.trim().split('\n').filter(Boolean).reverse();
-
-  const history: CommandHistory[] = [];
-  for (const line of lines) {
-    if (history.length >= count) break;
-    
-    const match = line.match(/\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \[(\w+)\] 命令 (.+) 执行(.+)，服务器 (.+)/);
-    if (match) {
-      history.push({
-        commandName: match[3],
-        server: match[5],
-        status: match[4].includes('成功') ? 'success' : 'error',
-        time: match[1],
-      });
-    }
-  }
-
-  return history;
-}
