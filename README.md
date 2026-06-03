@@ -43,9 +43,9 @@ Deploy Tool 为一套完整的 **Web 管理平台**，核心理念是：
 | ⏰ **Session 管理**   | 关闭浏览器自动失效，最大 24 小时有效期                                            |
 | 👤 **用户管理**        | 头像上传、密码修改、管理员可管理用户角色、账户状态（冻结/解冻）、OTP 重置                       |
 | 📋 **日志历史**        | 任务记录与脚本日志统一展示，支持按类型筛选查看                                        |
-| 🛡️ **审计日志**        | 记录管理员所有关键操作（登录、备份、部署等），记录操作员 IP 地址，支持多维度筛选，仅限系统管理员访问                               |
+| 🛡️ **审计日志**        | 记录管理员所有关键操作（登录、备份、部署、远程命令等），记录操作员 IP 地址，支持多维度筛选，仅限系统管理员访问                               |
 | 📦 **日志归档**        | 日志按时间戳归档保存后清空，支持查看归档列表与数量统计，仅限 `system_admin` 操作                              |
-| 🔒 **系统设置权限**     | 系统设置页仅 `system_admin` 可访问，修复 TOML 序列化引号丢失 bug，增加二次确认防误操作                         |
+| 🔒 **系统设置权限**     | 系统设置页仅 `system_admin` 可访问，增加二次确认防误操作                         |
 
 ---
 
@@ -244,7 +244,7 @@ docker run -d \
   -v "$(pwd)/script:/app/script:ro" \
   -v "/root/.ssh:/root/.ssh:ro" \
   -v "$(pwd)/logs:/app/logs" \
-  leleroyn/deploy-tool:0.3.5
+  leleroyn/deploy-tool:latest
 ```
 
 **浏览器访问：** `http://服务器IP:3001`
@@ -398,5 +398,3 @@ deploy-tool/
 <div align="center">
   <sub>如有问题请提 <a href="https://github.com/your-username/deploy-tool/issues">Issue</a></sub>
 </div>
-
-
