@@ -58,7 +58,7 @@ router.get('/history', async (_req: Request, res: Response) => {
       commandName: log.target,
       server: '',
       status: log.result === '成功' ? 'success' : 'error',
-      time: log.timestamp,
+      time: new Date(log.timestamp.replace(' ', 'T') + 'Z').toLocaleString('zh-CN', { hour12: false }),
     }));
 
     res.json({ success: true, data: history });
